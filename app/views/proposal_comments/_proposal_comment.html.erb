@@ -1,63 +1,50 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-	
-<div id="proposalNewComment" class="blogNewComment">
-	<script>
+<%= form_for [@proposal, proposal_comment], remote: true do |f| %>
 
-		function hide() {
-			$('#insert_comment').hide();
-			$('#insert_comment_loading').show();
-		}
-
-		$(function() {
-			$('#insert_comment').button();
-		});
-
-	</script>
-
-	<%= form_for [@proposal,proposal_comment], :remote => true do |f| %>
-	
-	<%= render :partial => 'fragments/error_messages', :locals => {:resource =>proposal_comment} %>
-	
-	<p>
-	    <%= f.label :content, t(:insert_contribute) %>
-        <span id="miglioricontributi">
-          <%=image_tag 'icon_info.gif', :style => 'cursor:pointer'%>
+    <p>
+      <%= f.label :content do %>
+          <%= t('pages.proposals.show.add_contribute') %>
+          <span id="miglioricontributi">
+            <i class="fa fa-info-circle"></i>
         </span>
+      <% end %>
+      <%= f.text_area :content, class: 'blogNewCommentField', rows: 10, cols: 70 %>
+    </p>
+    <p>
+      <%= f.submit t('pages.proposals.show.send_contribute_button'), class: 'btn green', data:{disable_with: t('sending')}, style: "width: 100px;height:35px;" %>
+    </p>
+<% end %>
 
-      <br/>
-      <div id="comment-form-comment">
-        <%= f.text_area :content, :class => 'blogNewCommentField', :rows => 5, :cols => 70 %>
-	  </div>
-	</p>
-	<p>
-		<%= f.submit t('pages.proposals.show.send_contribute_button'), :id => 'insert_comment', :onclick => "hide();" %>
-		<%= image_tag "spinner.gif", :style => 'display: none;', :id => 'insert_comment_loading' %>
-	</p>
-	<% end %>
-	
-	<script type="text/javascript">
-		$(function() {
+<script type="text/javascript">
+    $(function () {
+        $('.blogNewCommentField').each(function () {
+            if ($(this).attr('data-initialized') != 1) {
+                $(this).textntags({
+                    triggers: {'@': {uniqueTags: false}},
+                    onDataRequest: function (mode, query, triggerChar, callback) {
+                        var data = nicknames;
 
-			$('.blogNewCommentField').focus(function() {
-				$('#comment-form-comment').toggleClass("active");
-			}).focusout(function() {
-				$('#comment-form-comment').toggleClass("active");
-			});
+                        query = query.toLowerCase();
+                        var found = _.filter(data, function (item) {
+                            return item.name.toLowerCase().indexOf(query) > -1;
+                        });
 
-            $('#proposal_comment_content')
-                    .charCount({
-				allowed : <%=CONTRIBUTE_MAX_LENGTH%>,
-				warning : 100,
-				counterText : '<%=t('pages.proposals.show.characters_left')%> '
-			});
-            $('#proposal_comment_content').elastic();
-		});
-		
-  		$(document).ajaxError(function(e, XHR, options){
-    		if (XHR.status == 401){
-      			window.location.replace("<%= new_user_session_path %>");
-    		}
-  		});
-    </script>
-</div>
+                        callback.call(this, found);
+                    }
+                });
 
+                $(this).charCount({
+                    allowed: <%=CONTRIBUTE_MAX_LENGTH%>,
+                    warning: 100,
+                    counterText: '<%=t('pages.proposals.show.characters_left')%> '
+                });
+                $(this).attr('data-initialized', 1);
+            }
+        });
+    });
+
+    $(document).ajaxError(function (e, XHR, options) {
+        if (XHR.status == 401) {
+            window.location.replace("<%= new_user_session_path %>");
+        }
+    });
+</script>

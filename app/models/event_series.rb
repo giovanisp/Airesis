@@ -1,18 +1,3 @@
-# == Schema Information
-# Schema version: 20100330111833
-#
-# Table name: event_series
-#
-#  id         :integer(4)      not null, primary key
-#  frequency  :integer(4)      default(1)
-#  period     :string(255)     default("months")
-#  starttime  :datetime
-#  endtime    :datetime
-#  all_day    :boolean(1)
-#  created_at :datetime
-#  updated_at :datetime
-#
-
 class EventSeries < ActiveRecord::Base
   attr_accessor :title, :description, :commit_button, :event_type_id, :organizer_id, :meeting_attributes
   
@@ -20,7 +5,7 @@ class EventSeries < ActiveRecord::Base
   validates_presence_of :title, :description
   validate :validate_start_time_before_end_time
   
-  has_many :events, :dependent => :destroy
+  has_many :events, dependent: :destroy
   
   after_create :create_until_end
   
@@ -50,7 +35,7 @@ class EventSeries < ActiveRecord::Base
     
     while frequency.send(p).from_now(st) <= end_time
 #      puts "#{nst}           :::::::::          #{net}" if nst and net
-      self.events.create(:title => title, :description => description, :all_day => all_day, :starttime => nst, :endtime => net, :event_type_id => event_type_id, :meeting_attributes => self.meeting_attributes, :organizer_id => self.organizer_id)
+      self.events.create(title: title, description: description, all_day: all_day, starttime: nst, endtime: net, event_type_id: event_type_id, meeting_attributes: self.meeting_attributes, organizer_id: self.organizer_id)
       nst = st = frequency.send(p).from_now(st)
       net = et = frequency.send(p).from_now(et)
       

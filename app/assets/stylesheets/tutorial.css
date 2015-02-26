@@ -10,7 +10,7 @@
     font-size: 1em;    
 }
 
-.tutorial_panel .groupListContainer.highlighted {
+.tutorial_panel .groupListContainer.highlighted .card {
     background: repeat scroll 0 0 #FBEC88;
 	background: -webkit-gradient(linear, center top, center bottom, from(#FBEC88), to(#FBEC88));
 	background: -moz-linear-gradient(center top , #FBEC88, #FBEC88) repeat scroll 0 0 transparent;
@@ -19,13 +19,10 @@
 
 
 .tutorial_panel .groupListContainer {
-    width: 232px;
     cursor: pointer;
 }
 
-.tutorial_panel .groupUserImage {	
-	height: 45px;
-	width: 45px;
+.tutorial_panel .groupUserImage {
 }
 
 .tutorial_panel .groupName {

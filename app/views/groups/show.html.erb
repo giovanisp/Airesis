@@ -1,3 +1,6 @@
+<% @extend=true %>
+<% javascript 'endless_page' %>
+
 <%= content_for :head do %>
     <meta property="og:title" content="<%= @group.name %>"/>
     <meta property="og:type" content="airesis:group"/>
@@ -6,43 +9,55 @@
                                            else
                                              "#{request.protocol}#{request.host_with_port}#{asset_path("gruppo-anonimo.png")}"
                                            end %>"/>
-    <meta property="og:description" content="<%= @group.description %>"/>
-    <meta name="description" content="<%= @group.description %>">
+    <meta property="og:description" content="<%= CGI::escapeHTML(@group.description) %>"/>
+    <meta name="description" content="<%= CGI::escapeHTML(@group.description) %>">
+    <%= auto_discovery_link_tag(:atom, group_url(@group, format: 'atom')) %>
 <% end %>
 
-<% javascript 'endless_page' %>
-
-<div class="group_description">
-  <%= raw (h @group.description).gsub(/\n/, "<br>") %></div>
+<% if can? :view_data, @group %>
+    <% javascript 'endless_page' %>
 
 
-<% if @group.posts.published.count == 0 %>
-    <div class="blogPost">
-      <p>
-        <%= t('pages.groups.show.no_blogs_yet') %>
-      </p>
-    </div>
-<% else %>
-    <% posts = @group.posts.published.includes([:blog, {:user => :image}, :tags]) %>
-    <%= render :collection => posts, :partial => 'blog_posts/blog_post' %>
-<% end %>
-<%= render :partial => 'left_panel' %>
+    <div class="row full-width">
+      <div class="row">
+        <div class="columns medium-12 large-8">
 
-<% if false #disattivato momentaneamente %>
-    <%= content_for :right_panel do %>
-        <% if (can? :view_proposal, @group) %>
-            <h4>Proposte interne al gruppo</h4>
-            <% @group.internal_proposals.each do |proposal| %>
-                <%= link_to proposal.title, proposal_path(proposal) %><br/><br/>
+          <% if params[:action] == 'by_year_and_month' %>
+              <h2><%= t('pages.groups.archives.page_title', year: params[:year], month: t('date.month_names')[params[:month].to_i]) %></h2>
+          <% else %>
+              <div class="card"><%= raw (@group.description) %></div>
+          <% end %>
+
+          <div id="posts_container">
+            <% if @group_posts.size == 0 %>
+                <div class="blogPost">
+                  <p>
+                    <%= t('pages.groups.show.no_blogs_yet') %>
+                  </p>
+                </div>
+            <% else %>
+                <%= render collection: @group_posts, partial: 'blog_posts/group_blog_post', as: 'post_publishing' %>
+
             <% end %>
-            <%= "Al momento non ci sono proposte" if @group.internal_proposals.empty? %>
-        <% end %>
+          </div>
+          <% if @group_posts.size > COMMENTS_PER_PAGE %>
+              <div id="loading_results" class="post_results">
+                <span><%= t('pages.blogs.show.previous_posts') %></span>
+              </div>
+          <% end %>
+        </div>
 
-        <h4>Proposte sostenute dal gruppo</h4>
-        <% @group.proposals.each do |proposal| %>
-            <%= link_to proposal.title, proposal_path(proposal) %><br/><br/>
-        <% end %>
-        <%= "Al momento non ci sono proposte" if @group.proposals.empty? %>
-    <% end %>
+        <div class="homegroup columns large-4 show-for-large-up">
+
+
+          <% if can? :view_proposal, @group %>
+              <%= render partial: "groups/portlets/proposals", layout: "layouts/portlet" %>
+          <% end %>
+          <%= render partial: "groups/portlets/topics", layout: "layouts/portlet" %>
+          <%= render partial: "groups/portlets/events", layout: "layouts/portlet" %>
+        </div>
+      </div>
+    </div>
 <% end %>
 
+<%= render partial: 'left_panel' %>

@@ -1,8 +1,7 @@
 class ProposalTag < ActiveRecord::Base
-	#unloadable
 
-	belongs_to :proposal, :class_name => 'Proposal'
-	belongs_to :tag, :class_name => 'Tag'
+	belongs_to :proposal, class_name: 'Proposal'
+	belongs_to :tag, class_name: 'Tag'
 	
 	after_create  :increment_counter_cache
   after_destroy :decrement_counter_cache

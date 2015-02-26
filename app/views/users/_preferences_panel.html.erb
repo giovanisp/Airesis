@@ -1,24 +1,35 @@
-<div id="setting_menu">
-  <h4><%= 'Impostazioni e preferenze' %></h4>
+<div class="mybox" data-ijs="settings-menu">
+  <h4><%= t('pages.users.left_panel.title') %></h4>
 
-  <div class="menu_voice">
-    <span class="Mo ui-icon ui-icon-gear"></span>
-    <%= link_to 'Informazioni generali', user_url(current_user), class: 'Mo' %>
-    <div style="clear:both"></div>
+  <div class="menu-voice general_info">
+    <%= link_to user_url(current_user) do %>
+        <i class="fa fa-gears"></i>
+        <%= t('pages.users.left_panel.general_info') %>
+    <% end %>
   </div>
-  <div class="menu_voice">
-    <span class="Mo ui-icon ui-icon-alert"></span>
-    <%= link_to 'Allarmi e notifiche', alarm_preferences_users_url, class: 'Mo' %>
-    <div style="clear:both"></div>
+  <div class="menu-voice alarm_and_notifications">
+
+    <%= link_to alarm_preferences_users_url do %>
+        <i class="fa fa-bell"></i>
+        <%= t('pages.users.left_panel.alarm_and_notifications') %>
+    <% end %>
   </div>
-  <div class="menu_voice">
-    <span class="Mo ui-icon ui-icon-scissors"></span>
-    <%= link_to 'Confini di interesse', border_preferences_users_url, class: 'Mo' %>
-    <div style="clear:both"></div>
+  <div class="menu-voice geographic_borders">
+    <%= link_to border_preferences_users_url do %>
+        <i class="fa fa-image"></i>
+        <%= t('pages.users.left_panel.geographic_borders') %>
+    <% end %>
   </div>
-  <div class="menu_voice">
-    <span class="Mo ui-icon ui-icon-key"></span>
-    <%= link_to 'Account e privacy', privacy_preferences_users_url, class: 'Mo' %>
-    <div style="clear:both"></div>
+  <div class="menu-voice account_and_policy">
+    <%= link_to privacy_preferences_users_url do %>
+        <i class="fa fa-key"></i>
+        <%= t('pages.users.left_panel.account_and_privacy') %>
+    <% end %>
+  </div>
+  <div class="menu-voice statistics">
+    <%= link_to statistics_users_url do %>
+        <i class="fa fa-bar-chart"></i>
+        <%= t('pages.users.left_panel.statistics') %>
+    <% end %>
   </div>
 </div>

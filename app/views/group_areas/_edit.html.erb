@@ -1,47 +1,72 @@
-<h1><%="Modifica ruoli e permessi area di lavoro: #{@group_area.name}" %></h1>
+<div class="card">
+  <%= simple_form_for !in_subdomain? ? [@group, @group_area] : @group_area, validate: true, remote: request.xhr? do |e| %>
 
+      <%= e.input :name %>
+
+      <%= e.input :description, as: :text %>
+
+      <%= e.submit t('buttons.update'), class: 'btn blue', data: {disable_with: t('saving')} %>
+  <% end %>
+</div>
+
+
+<h1><%= t('pages.groups.edit_work_areas.manage.manage_roles_in_area', area: @group_area.name) %></h1>
 <div id="roles_panel_container">
-  <%= render :partial => 'group_areas/roles_panel' %>
+  <%= render partial: 'group_areas/roles_panel' %>
 </div>
 <br/>
-<%= link_to t('pages.group_areas.edit.add_role_button'), new_group_group_area_area_role_path(@group,@group_area), remote: true, class: 'newButton disableButton' %>
+<%= link_to new_group_group_area_area_role_url(@group, @group_area), remote: true, data: {disable_with: t('loading')}, class: 'btn blue' do %>
+    <i class="fa fa-plus"></i>
+    <%= t('pages.groups.edit_permissions.new_role') %>
+<% end %>
 
-<div id="new_area_role_container">
-</div>
-
-<hr />
+<hr/>
 
 <div id="roles_table_container">
-  <%= render :partial => 'group_areas/user_roles_panel' %>
+  <%= render partial: 'group_areas/user_roles_panel' %>
 </div>
 
 <script type="text/javascript">
-    $(function() {
-      generateTable();
+    $(document).on('click', '[data-area-action-abilitation]', function () {
+        var role_id = $(this).data('area_role_id');
+        var action_id = $(this).data('action_id');
+        var block_ = !this.checked;
+        $.ajax({
+            data: "action_id=" + action_id + "&block=" + block_ + "&l=<%=I18n.locale%>",
+            url: "/groups/<%=@group.id%>/group_areas/<%=@group_area.id%>/area_roles/" + role_id + "/change",
+            dataType: 'script',
+            type: 'patch'
+        });
+    });
+</script>
+
+<script type="text/javascript">
+    $(function () {
+        generateTable();
     });
 
     function generateTable() {
         //gestisce il cambio del ruolo di un utente
-        $('.user_role_changer').each(function(i,el) {
+        $('.user_role_changer').each(function (i, el) {
             var select = $(el);
-            var username  = select.parent().prev().text();
+            var username = select.parent().prev().text();
             var user_id = select.data("user_id");
             //memorizzo il ruolo di ciascun utente
             var previousValue = select.val();
-            var previousLabel = $('option:selected',select).text();
+            var previousLabel = $('option:selected', select).text();
             //quando viene cambiato il ruolo, chiedo conferma all'utente
-            select.bind("change",function() {
+            select.bind("change", function () {
 
                 var currentValue = select.val();
-                var currentLabel = $('option:selected',select).text();
-                if (confirm("Il ruolo dell'utente " + username + " passerà da " + previousLabel + " a " + currentLabel +". Confermi?")) {
+                var currentLabel = $('option:selected', select).text();
+                if (confirm("<%=t('pages.groups.edit_permissions.confirm_role_change1')%> " + username + " <%=t('pages.groups.edit_permissions.confirm_role_change2')%> " + previousLabel + " <%=t('pages.groups.edit_permissions.confirm_role_change3')%> " + currentLabel + ". <%=t('pages.groups.edit_permissions.confirm_role_change4')%>")) {
                     previousValue = currentValue;
                     previousLabel = currentLabel;
                     select.disabled = true;
                     //se l'utente conferma invio la richiesta al server
                     $.ajax({
-                        data: "user_id="+user_id+"&id="+currentValue+"&group_id=<%=@group.id%>",
-                        url: "<%=change_permissions_group_group_area_area_roles_path(@group,@group_area)%>",
+                        data: "user_id=" + user_id + "&id=" + currentValue + "&group_id=<%=@group.id%>",
+                        url: "<%=change_permissions_group_group_area_area_roles_url(@group,@group_area)%>",
                         dataType: 'script',
                         type: 'PUT'
                     });
@@ -55,12 +80,12 @@
             })
         });
 
-        $('#roles_table').dataTable( {
+        $('#roles_table').dataTable({
             "oLanguage": {
                 "sLengthMenu": "Mostra _MENU_ utenti per pagina",
                 "sSearch": "Cerca:",
                 "sZeroRecords": "Nessun utente, spiacente..",
-                "sInfo": "Sto mostrando da _START_ a _END_ di _TOTAL_ utenti",
+                "sInfo": "Sto mostrando da _START_ a _END_ di _TOTAL_ utenti", //TODO:il18n
                 "sInfoEmpty": "Sto mostrando 0 utenti",
                 "sInfoFiltered": "(filtrati da un totale di _MAX_ utenti)",
                 "oPaginate": {
@@ -68,34 +93,9 @@
                     "sNext": "Pagina successiva"
                 }
             },
-            "aoColumns": [null,{ "bSortable": false }]
+            "aoColumns": [null, {"bSortable": false}]
         });
 
-        $('#roles_table_wrapper label').css("font-weight","normal").css("font-size","12px");
+        $('#roles_table_wrapper label').css("font-weight", "normal").css("font-size", "12px");
     }
-
-    function change_permission_block(el,role_id,action_id) {
-        if (el.checked) {
-            $.ajax({
-                data: "action_id="+action_id+"&id="+role_id+"&block=false",
-                url: "<%=change_group_group_area_area_roles_path(@group,@group_area)%>",
-                dataType: 'script',
-                type: 'put'
-            });
-        }
-        else {
-            $.ajax({
-                data: "action_id="+action_id+"&id="+role_id+"&block=true",
-                url: "<%=change_group_group_area_area_roles_path(@group,@group_area)%>",
-                dataType: 'script',
-                type: 'put'
-            });
-        }
-    }
-
-    function hideNewRolePanel() {
-        $('#new_role').dialog('destroy');
-    }
-
-    disegnaBottoni();
 </script>

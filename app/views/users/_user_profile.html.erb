@@ -1,170 +1,161 @@
-<h4><%= t('pages.users.show.profile_info') %><%= t('pages.users.show.profile_info_unconfirmed') unless @user.confirmed? %></h4>
+<div class="card">
+  <div class="image-container">
+    <%= @user.user_image_tag 120 %>
+    <% if @user == current_user %>
+        <div class="caption">
+          <a><%= t('pages.users.show.edit_image') %></a>
+        </div>
+    <% end %>
+  </div>
+</div>
+
 <% if ::Configuration::user_messages %>
-    <span><%= link_to t('pages.users.show.send_message_button'), show_message_user_path(@user), :remote => true, :class => 'inviteButton disableButton' if can? :send_message, @user %></span>
+    <span>
+      <%= link_to show_message_user_path(@user), remote: true, class: 'btn disable' do %>
+          <i class="fa fa-envelope-o"></i>
+          <%= t('pages.users.show.send_message_button') %>
+      <% end if can? :send_message, @user %>
+    </span>
 <% end %>
-<table style="width:100%">
 
-  <tr>
-    <td>
-      <div class="user_profile shadow-box">
-        <div id="name_profile" class="profile_element">
-          <h2 class="label_profile"><%= 'Nome' %>: </h2>
+<div class="card">
+  <h2><%= t('pages.users.show.profile_info') %><%= t('pages.users.show.profile_info_unconfirmed') unless @user.confirmed? %></h2>
 
-          <div class="info_profile">
-            <%= h @user.name %>
-          </div>
-        </div>
-        <div id="surname_profile" class="profile_element">
-          <h2 class="label_profile"><%= 'Cognome' %>: </h2>
+  <div id="name_profile" class="profile_element">
 
-          <div class="info_profile">
-            <%= h @user.surname %>
-          </div>
-        </div>
-        <% if current_user == @user %>
-            <div id="email_profile" class="profile_element">
-              <h2 class="label_profile"><%= 'Email' %>: </h2>
+    <h2 class="label_profile"><%= t('pages.users.show.name_label') %>: </h2>
 
-              <div class="info_profile">
-                <%= @user.email %> <%= raw "<span style=\"color:#888\">(#{@user.unconfirmed_email} da confermare)</span>" if @user.unconfirmed_email %>
-              </div>
-            </div>
-            <div id="password_profile" class="profile_element">
-              <h2 class="label_profile"><%= 'Password' %>: </h2>
-
-              <div class="info_profile">
-                *****
-              </div>
-            </div>
-        <% end %>
-
-        <% if @user.show_urls && ::Configuration::socialnetwork_active %>
-            <div id="facebook_profile" class="profile_element_no_click">
-              <h2 class="label_profile">URL Facebook: </h2>
-
-              <div class="info_profile">
-                <%= @user.facebook_page_url ? (link_to @user.facebook_page_url, @user.facebook_page_url, :target => "_blank") : '' %>
-              </div>
-            </div>
-            <div id="google_profile" class="profile_element_no_click">
-              <h2 class="label_profile">URL Google+: </h2>
-
-              <div class="info_profile">
-                <%= @user.google_page_url ? (link_to @user.google_page_url, @user.google_page_url, :target => "_blank", :rel => 'author') : '' %>
-              </div>
-            </div>
-            <div id="linkedin_profile" class="profile_element_no_click">
-              <h2 class="label_profile">URL Linkedin: </h2>
-
-              <div class="info_profile">
-                <%= @user.linkedin_page_url ? (link_to @user.linkedin_page_url, @user.linkedin_page_url, :target => "_blank") : '' %>
-              </div>
-            </div>
-        <% end %>
-        <% if @user.login %>
-            <div id="username_profile" class="profile_element_no_click">
-              <h2 class="label_profile"><%= 'Username' %>: </h2>
-
-              <div class="info_profile">
-                <%= h @user.login %>
-              </div>
-            </div>
-        <% end %>
-        <div id="confirmed_at_profile" class="profile_element_no_click">
-          <h2 class="label_profile"><%= 'Registrato dal' %>: </h2>
-
-          <div class="info_profile">
-            <%= h (@user.confirmed? ? @user.confirmed_at : @user.created_at).strftime("%d/%m/%Y") %>
-          </div>
-        </div>
-
-      </div>
-    </td>
-    <td>
-    </td>
-  </tr>
-</table>
-<% if current_user == @user %>
-    <div id="img_modal" class="edit_modal">
-      <form action="/users/<%= @user.id %>" id="upload_form" method="post" enctype="multipart/form-data">
-        <h2 style="margin-top:0px;float:left;color: #333333;font-size: 110%;font-weight: bold;vertical-align: top">URL
-          dell'immagine</h2>
-
-        <div style="padding-left:150px">
-          <input name="user[blog_image_url]"/>
-          <br/>
-        </div>
-        oppure
-        <div style="float:left">
-          <h2 style="margin-top:0px;float:left;color: #333333;font-size: 110%;font-weight: bold;vertical-align: top">Carica
-            un'immagine</h2>
-
-          <div style="padding-left:150px">
-            <input type="file" name="image"/>
-            <br/>
-            <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>"/><input type="hidden" value="put" name="_method">
-
-            <div style="margin-top:8px">
-              <input type="submit" name="commit" value="Salva"/><input type="button" value="Annulla" onclick="$.modal.close();"/>
-            </div>
-          </div>
-        </div>
-      </form>
+    <div class="info_profile">
+      <%= h @user.name %>
     </div>
-    <script>
+  </div>
+  <div id="surname_profile" class="profile_element">
+    <h2 class="label_profile"><%= t('pages.users.show.surname_label') %>: </h2>
 
+    <div class="info_profile">
+      <%= h @user.surname %>
+    </div>
+  </div>
+  <% if current_user == @user %>
+      <div id="email_profile" class="profile_element">
+        <h2 class="label_profile"><%= t('pages.users.show.email_label') %>: </h2>
+
+        <div class="info_profile">
+          <%= @user.email %> <%= raw "<span style=\"color:#888\">(#{@user.unconfirmed_email} #{t('pages.users.show.to_be_confirmed')})</span>" if @user.unconfirmed_email %>
+        </div>
+      </div>
+      <div id="password_profile" class="profile_element">
+        <h2 class="label_profile"><%= t('pages.users.show.password_label') %>: </h2>
+
+        <div class="info_profile">
+          *****
+        </div>
+      </div>
+
+  <% end %>
+
+  <% if @user.show_urls && ::Configuration::socialnetwork_active %>
+      <div id="facebook_profile" class="profile_element_no_click">
+        <h2 class="label_profile"><%= t('pages.users.show.facebook_url_label') %>: </h2>
+
+        <div class="info_profile">
+          <%= link_to @user.facebook_page_url, @user.facebook_page_url, target: "_blank" if @user.has_provider?(Authentication::FACEBOOK) %>
+        </div>
+      </div>
+      <div id="google_profile" class="profile_element_no_click">
+        <h2 class="label_profile"><%= t('pages.users.show.googleplus_url_label') %>: </h2>
+
+        <div class="info_profile">
+          <%= link_to(@user.google_page_url, @user.google_page_url, target: "_blank", rel: 'author') if @user.has_provider?(Authentication::GOOGLE) %>
+        </div>
+      </div>
+      <div id="linkedin_profile" class="profile_element_no_click">
+        <h2 class="label_profile"><%= t('pages.users.show.linkedin_url') %>: </h2>
+
+        <div class="info_profile">
+          <%= link_to @user.linkedin_page_url, @user.linkedin_page_url, target: "_blank" if @user.has_provider?(Authentication::LINKEDIN) %>
+        </div>
+      </div>
+  <% end %>
+  <% if @user.login %>
+      <div id="username_profile" class="profile_element_no_click">
+        <h2 class="label_profile"><%= t('pages.users.show.username_label') %>: </h2>
+
+        <div class="info_profile">
+          <%= h @user.login %>
+        </div>
+      </div>
+  <% end %>
+  <div id="confirmed_at_profile" class="profile_element_no_click">
+    <h2 class="label_profile"><%= t('pages.users.show.registered_from') %>: </h2>
+
+    <div class="info_profile">
+      <%= l (@user.confirmed? ? @user.confirmed_at : @user.created_at) %>
+    </div>
+  </div>
+  <% if (current_user == @user) && @user.certified? %>
+      <div id="confirmed_at_profile" class="profile_element_no_click">
+        <h2 class="label_profile"><%= t('pages.users.show.certified_from') %>: </h2>
+
+        <div class="info_profile">
+          <%= l @user.certification.created_at %>
+        </div>
+      </div>
+  <% end %>
+</div>
+
+<% if current_user == @user %>
+    <div id="img_modal" class="reveal-modal medium" data-reveal>
+        <%=simple_form_for @user do |f| %>
+        <div class="row">
+          <div class="columns large-6">
+            <h2><%= t('pages.users.show.load_image') %></h2>
+            <div class='panel callout'>
+              <p>
+                <%= t('pages.users.show.max_file_size') %>
+              </p>
+            </div>
+            <%=f.input :avatar, html_input: {accepted: 'image/jpeg,image/png'} %>
+            <%= link_to t('buttons.cancel'), '#', class: 'btn', data: {'reveal-close' => ''} %>
+            <%=f.submit t('buttons.save'), class: 'btn blue' %>
+          </div>
+        </div>
+      <%end%>
+      <a class="close-reveal-modal">&#215;</a>
+    </div>
+    <script type="text/javascript">
         $(function () {
-            $.modal.close();
-
             $('#name_profile').click(function () {
-                doModal($("#name_modal"));
+                $("#name_modal").foundation('reveal', 'open');
             });
 
             $('#surname_profile').click(function () {
-                doModal($("#surname_modal"));
+                $("#surname_modal").foundation('reveal', 'open');
             });
 
             $('#email_profile').click(function () {
-                doModal($("#email_modal"));
+                $("#email_modal").foundation('reveal', 'open');
             });
             <%if params[:insert_email]%>
             $('#email_profile').click();
             <%end%>
 
             $('#password_profile').click(function () {
-                doModal($("#password_modal"));
+                $("#password_modal").foundation('reveal', 'open');
             });
 
-            /*  $('#facebook_profile').click(function(){
-             doModal($("#facebook_page_url_modal"));
-             });
-
-             $('#google_profile').click(function(){
-             doModal($("#google_page_url_modal"));
-             });
-
-             $('#linkedin_profile').click(function(){
-             doModal($("#linkedin_page_url_modal"));
-             });*/
-
-            $('.image_container img, .caption').mouseover(function () {
-                $('.caption').show();
-            });
-
-            $('.image_container img').mouseout(function () {
-                $('.caption').hide();
-            });
-
-            $('.image_container div a').click(function () {
-                doModal($("#img_modal"));
+            $('.image-container div a').click(function () {
+                $("#img_modal").foundation('reveal', 'open');
             });
 
             $('.profile_element').css('cursor', 'pointer');
 
-            $('.profile_element').hover(function () {
-                $(this).toggleClass('profile_element_hover');
-            });
-
+        });
+    </script>
+<% else %>
+    <script type="text/javascript">
+        $(function () {
+            $('.profile_element').addClass('profile_element_no_click').removeClass('profile_element');
         });
     </script>
 <% end %>

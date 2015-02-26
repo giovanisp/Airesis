@@ -1,9 +1,20 @@
-$('#vote_results_container').html("<%= escape_javascript(render(:partial => 'vote_results'))%>");
-$('#vote_results_container').dialog({ width: 500, height: 'auto', modal: true});
-disegnaBottoni();
-$('#resultsButton').click(function(e) {
+var container_ = $('<div id="vote_results_container" class="reveal-modal" data-reveal></div>');
+container_.html("<%=j render(partial: @proposal.is_schulze? ? 'schulze_vote_results' : 'vote_results')%>");
+$('body').append(container_);
+airesis_reveal(container_, false);
 
-  $('#vote_results_container').dialog('open');
+
+
+
+
+
+showVoteResults();
+
+$('.results-button').click(function (e) {
+    container_.foundation().foundation('reveal', 'open');
     e.preventDefault();
-  return false;
-})
+    return false;
+});
+
+
+

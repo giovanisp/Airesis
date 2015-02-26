@@ -1,79 +1,61 @@
 #encoding: utf-8
 class BlogCommentsController < ApplicationController
-  unloadable
-  
   helper :blog
   
   layout('application')
-    
-  before_filter :authenticate_user!, :only => [:create, :delete]
-  
-  before_filter :load_blog_post #carica @blog e @blog_post
-  before_filter :load_blog_comment, :only => [:delete] #carica @blog_comment
-  before_filter :check_author, :only => [:delete]
+
+  before_filter :save_comment, only: :create
+
+  load_and_authorize_resource :blog
+  load_and_authorize_resource :blog_post
+  load_and_authorize_resource through: :blog_post
   
   def index
   
   end
   
   def create
-    @blog_comment = @blog_post.blog_comments.new(params[:blog_comment])
-    @blog_comment.user_id = current_user.id if current_user
-    @blog_comment.request = request
-    
     respond_to do |format|
-      if @blog_comment.save
-        flash[:notice] = 'Commento inserito.'      
-        @blog_comments = @blog_post.blog_comments.paginate(:page => params[:page], :per_page => COMMENTS_PER_PAGE,:order => 'created_at DESC')
-        @saved = @blog_comments.find { |comment| comment.id == @blog_comment.id }
-        @saved.collapsed = true
-        format.js   { render :update do |page|
-                        page.replace_html "blogPostCommentsContainer", :partial => "blog_posts/comments", :layout => false
-                        page.replace "blogNewComment", :partial => 'blog_comments/new_blog_comment', :locals => {:blog_comment => @blog_post.blog_comments.new}
-                        
-                      end
-                    }
+      if save_blog_comment(@blog_comment)
+        flash[:notice] = t('info.blog.comment_added')
+        @blog_comment.collapsed = true
+        format.js
+        format.html
+      else
+        flash[:error] = t('error.blog.comment_added')
+        format.js { render 'blog_comments/errors/create'}
         format.html 
-        
-        format.xml  { render :xml => @blog_comment, :status => :created, :location => @blog_comment }
-      else        
-        format.js   { render :update do |page|
-                        page.replace "blogNewComment", :partial => 'blog_comments/new_blog_comment', :locals => {:blog_comment => @blog_comment}
-                      end
-                    }
-        format.html 
-        format.xml  { render :xml => @blog_comment.errors, :status => :unprocessable_entity }
       end
     end
   end
   
-  def delete       
+  def destroy
     @blog_comment.destroy  
     flash[:notice] = 'The comment has been deleted'  
     respond_to do |format|
-      format.js {
-        render :update do |page|
-          @blog_comments = @blog_post.blog_comments.paginate(:page => params[:page],:per_page => COMMENTS_PER_PAGE, :order => 'created_at DESC')        
-          page.replace_html "blogPostCommentsContainer", :partial => "blog_posts/comments"
-        end
-      }
-      format.html { redirect_to(blog_blog_post_url(@blog,@blog_post)) }
+      format.js
+      format.html { redirect_to blog_blog_post_url(@blog,@blog_post) }
     end
   end
   
  
   private
+
+  def blog_comment_params
+    params.require(:blog_comment).permit(:parent_blog_comment_id, :body)
+  end
+
   def load_blog_post
     @blog_post = BlogPost.find(params[:blog_post_id])
     @blog = @blog_post.blog
     
     unless @blog_post
       flash[:notice] = 'The post you were looking for could not be found'
-      redirect_to :controller => 'blog_posts'
+      redirect_to controller: 'blog_posts'
       return false
     end
     
-    return true
+    true
   end
   
   def load_blog_comment
@@ -84,10 +66,18 @@ class BlogCommentsController < ApplicationController
    def check_author
     if (current_user.id != @blog_comment.user_id and
         current_user.id != @blog_post.user_id)    
-      flash[:notice] = t(:error_comment_not_your)
+      flash[:notice] = t('info.proposal.comment_not_your')
       redirect_to :back
     end
     
+   end
+
+  def save_comment
+    return if current_user
+    session[:blog_comment] = blog_comment_params
+    session[:blog_post_id] = params[:blog_post_id]
+    session[:blog_id] = params[:blog_id]
+    flash[:info] = t('info.proposal.login_to_contribute')
   end
   
 end

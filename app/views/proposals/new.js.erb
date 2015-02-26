@@ -1,21 +1,56 @@
-$('#create_proposal_container').html('<%= escape_javascript(render(:partial => @proposal))%>');
-
-var create_proposal_ = $('#create_proposal');
-create_proposal_.dialog({
-    title: '<%=escape_javascript @title%>',
-    modal: true,
-    width: 720,
-    height: 'auto',
-    close: function (event, ui) {
-        create_proposal_.dialog('destroy');
-        create_proposal_.remove();
-        window.location.reload(); //TODO workaround se ridisegno la textarea non funziona quindi devo ricaricare la pagina
+/**
+ * If the step for similar proposals jumped, jump it also when going back
+ */
+function skipIfNecessary(activeDiv) {
+    if (activeDiv.attr('id') == 'suggestions' && skippedSuggestionStep) {
+        $('#form-wizard-prev').click();
     }
+}
+
+/**
+ * Show similar proposals
+ */
+function showSimilarProposal(activeDiv) {
+    $('#new_proposal').enableClientSideValidations();
+    $(':input', activeDiv).first().focus();
+    if (activeDiv.attr('id') == 'suggestions') {
+        $.ajax({
+            url: '<%=similar_proposals_path group_id: params[:group_id]%>',
+            data: 'tags=' + $('#proposal_tags_list').val()
+        })
+    }
+
+}
+
+window.ClientSideValidations.selectors = {
+    inputs: ':input:not(button):not([type="submit"])[name]:enabled',
+    validate_inputs: ':input:enabled:visible[data-validate]',
+    forms: 'form[data-validate]'
+};
+
+<%if params[:models] %>
+var container_ = $('.reveal-modal:visible');
+<%else%>
+var container_ = $('<div class="reveal-modal large" data-reveal  data-options="close_on_esc: false;close_on_background_click: false;"></div>');
+$('body').append(container_);
+<%end%>
+<%if params[:proposal_type_id] == ProposalType::PETITION %>
+container_.html('<%=j render "proposal_types/petition"%>');
+<%else %>
+container_.html('<%=j render "proposal_types/form"%>');
+<%end%>
+
+<%unless params[:models] %>
+airesis_reveal(container_);
+<%end%>
+
+$('.legend').hide();
+
+$("#new_proposal").quickWizard({
+    prevButton: '<button id="form-wizard-prev" type="button" class="btn"><i class="fa fa-arrow-left"></i><%=j t('buttons.go_back')%></button>',
+    nextButton: '<button id="form-wizard-next" type="button" class="btn blue"><i class="fa fa-arrow-right"></i><%=j t('buttons.next')%></button>',
+    nextCallback: showSimilarProposal,
+    prevCallback: skipIfNecessary
 });
 
-disegnaBottoni();
-
-//window.ClientSideValidations.forms['new_proposal'].validators['proposal[sections_attributes][][paragraphs_attributes][][content]']['presence'] = [{'message':'deve essere compilato'}];
-
 $('#new_proposal').enableClientSideValidations();
-

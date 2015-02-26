@@ -1,19 +1,20 @@
 class Election < ActiveRecord::Base
-  belongs_to :event, :class_name => 'Event', :foreign_key => :event_id
+  belongs_to :event, class_name: 'Event', foreign_key: :event_id
   
-  has_many :group_elections, :class_name => 'GroupElection', :dependent => :destroy
+  has_many :group_elections, class_name: 'GroupElection', dependent: :destroy
   #gruppi che partecipano all'elezione
-  has_many :groups, :through => :group_elections, :class_name => 'Group'
+  has_many :groups, through: :group_elections, class_name: 'Group'
   #candidati all'elezione
-  has_many :candidates, :class_name => 'Candidate'  
+  has_many :candidates, class_name: 'Candidate'
   
-  has_many :election_votes, :class_name => 'ElectionVote'
+  has_many :election_votes, class_name: 'ElectionVote'
   
-  has_many :voters, :through => :election_votes, :class_name => 'User', :source => 'user'
+  has_many :voters, through: :election_votes, class_name: 'User', source: 'user'
   
-  has_many :schulze_votes, :class_name => 'SchulzeVote'
+  has_many :schulze_votes, class_name: 'SchulzeVote'
   
-  validates_presence_of :name, :description, :groups_end_time, :candidates_end_time
+  #validates_presence_of :name, :description#TODO momentaneamente disabilitato , :groups_end_time
+  validates_presence_of :candidates_end_time#TODO momentaneamente disabilitato , :groups_end_time
   validate :validate_groups_time_before_candidates_time
   
   #un'elezione che è attualmente in fase di iscrizione gruppi, ovvero l'evento è iniziato, non si è concluso e non è arrivato il termine per l'iscrizione dei gruppi'
@@ -24,6 +25,12 @@ class Election < ActiveRecord::Base
 
   #un'elezione che è attualmente in fase di voto, ovvero l'evento è iniziato, non si è concluso e si è conclusa l'iscrizione dei gruppi'
   scope :voting_phase, lambda {includes(:event).where(['events.starttime < ? and events.endtime > ? and elections.candidates_end_time < ?',Time.now,Time.now,Time.now])}
+
+  before_save :populate_groups_end_time
+
+  def populate_groups_end_time
+    self.groups_end_time = self.event.starttime
+  end
   
   def validate_groups_time_before_candidates_time
     if groups_end_time && candidates_end_time

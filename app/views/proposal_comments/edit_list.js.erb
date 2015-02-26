@@ -1,0 +1,23 @@
+$('#proposalCommentsContainer').append("<%= j render 'proposals/edit_comments'%>");
+
+firstCheck = false;
+<%if @total_pages > @current_page%>
+    $('#loading_results').show();
+    if (!firstCheck) {
+        checkScroll();
+        firstCheck = true;
+    }
+    checkActive = true;
+    hideLeftPanel();
+<%else%>
+    $('#loading_results').hide();
+    <%if @proposal_comments.count == 0 %>
+        $('.suggestion-title').remove();
+        $('.suggestion_right').remove();
+    <%else%>
+        hideLeftPanel();
+    <%end%>
+<%end%>
+
+$('.reply_textarea').elastic();
+disegnaCountdown();

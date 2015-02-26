@@ -1,6 +1,6 @@
 <div class="blogComments" id="blogPostComments">
 	<% @blog_comments.each do |comment| %>
-		<%= render :partial => 'blog_posts/comment', :locals => {:comment => comment} %>
+		<%= render partial: 'blog_posts/comment', locals: {comment: comment} %>
 	<% end %>
 </div>
 
@@ -10,7 +10,6 @@
 	function hiding(event,id) {
 		if (!retval) {
 			clicked = $('#delete'+id);
-			console.log(clicked);
 			if (confirm('<%=t('pages.blog_posts.comment.confirm_delete')%>')) {
 				$('#comment'+id).hide(600,function() {
 					retval = true;

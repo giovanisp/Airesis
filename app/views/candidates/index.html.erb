@@ -1,16 +1,18 @@
 <%= content_for :head do %>
-    <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?key=<%= MAPS_API_KEY %>&sensor=false"></script>
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=<%= ENV['MAPS_API_KEY'] %>&sensor=false"></script>
 <% end %>
 
+<div class="toast-warning info-panel" >
+  <b>ATTENZIONE!</b> <br/>
+  <b>Funzionalità disattivata</b><br/>
+  Il modulo elezioni è stato abbandonato a favore del nuovo modello di proposta 'Elezione candidati'
+</div>
 
-<%=render :layout => "layouts/page_title", :locals => {:title => "Area candidature"} do%>
+<%=render layout: "layouts/page_title", locals: {title: "Area candidature"} do%>
 			
 <%end%>
 
-<%= render :partial => "steps/#{@step.fragment}", :layout => "layouts/tutorial" if @step%>
 
-<h4><%=raw t('pages.candidates.index.description') + " #{link_to t('pages.candidates.index.create_election'),  new_group_event_path(@group, type: 'election'), :remote => true}." %>
-</h4>
 <table id="candidates">
 	<thead>
 		<th><%= t('pages.candidates.index.user_column') %></th>
@@ -18,7 +20,7 @@
 		<th><%= t('pages.candidates.index.state_column') %></th>
 	</thead>
 	<tbody>
-		<%@group.candidates.all(:include => [:user,{:election => :event}]).each do |candidate|%>
+		<%@group.candidates.all(include: [:user,{election: :event}]).each do |candidate|%>
 			<tr>
 				<td><%=candidate.user.fullname%></td>
 				<td><%=link_to candidate.election.name, candidate.election%></td>
@@ -37,10 +39,6 @@
 </table>
 <br />
 
-<div id="create_event_dialog" style="display:none;">
-  <div id="create_event">
-  </div>
-</div>
 
 <script type="text/javascript">
 	$(function() {
@@ -80,6 +78,7 @@
 
 
 <% content_for :left_panel do %>
-	<%= link_to t('pages.candidates.index.send_candidate_button'), new_group_candidate_path(@group),:remote => true, :class=>"personButton disableButton" if (@group.elections.candidates_phase.count != 0) && (can? :send_candidate, @group)%><br />
-    <%= link_to t('pages.candidates.index.create_election_button'), new_group_event_path(@group, type: 'election'), :remote => true, :class => 'newButton disableButton' if can? :create_event, @group%>
+    <div class="mybox">
+	<%= link_to t('pages.candidates.index.send_candidate_button'), new_group_candidate_url(@group),remote: true, :class=>"btn disable" if (@group.elections.candidates_phase.count != 0) && (can? :send_candidate, @group)%><br />
+    </div>
 <%end%>

@@ -1,118 +1,99 @@
 source 'http://rubygems.org'
 
-gem 'rails', '3.2.1'
+ruby '2.1.0'
 
-gem 'therubyracer', '0.10.1'
+gem 'rails', '4.0.2'
 
-gem 'tinymce-rails'
+gem 'therubyracer', platforms: :ruby
 
-gem 'maktoub', :git => 'https://github.com/coorasse/maktoub.git'
+gem 'maktoub'
 
 gem 'turnout'
 
-group :assets do
-  gem 'sass-rails', "~> 3.2.3"
-  gem 'coffee-rails', "~> 3.2.1"
-  gem 'uglifier', ">= 1.0.3"
-end
+gem 'sass-rails', "~> 4.0.0"
+gem 'coffee-rails', "~> 4.0.0"
+gem 'uglifier', ">= 1.3.0"
+gem 'foundation-rails', github: 'johnantoni/foundation-rails', branch: 'foundation-5.4.7' #not the official repossitory. waiting for update to 5.4.7
 
-
-# Bundle edge Rails instead:
-# gem 'rails', :git => 'git://github.com/rails/rails.git'
-
-#gem 'sqlite3-ruby', '1.2.5', :require => 'sqlite3'
 gem 'pg'
 
 gem 'sunspot_rails'
 
+gem 'capistrano', '~> 3.2.0'
+gem 'capistrano-bundler', '~> 1.1.2'
+gem 'capistrano-rails', '~> 1.1'
+gem 'rvm1-capistrano3', require: false
+
 group :development do
   gem 'sunspot_solr'
+  gem "better_errors"
+  gem 'quiet_assets'
+  gem 'capistrano-sidekiq'
+  gem 'i18n-tasks', '~> 0.7.7'
 end
 
-#gem 'rufus-scheduler'
+group :development, :test do
+  gem 'rspec-rails', '~> 3.0.0'
+  gem 'factory_girl_rails'
+  gem 'capybara'
+  gem 'database_cleaner'
+  gem 'selenium-webdriver'
+  gem 'capybara-webkit'
+  gem 'capybara-screenshot'
+  gem "spring"
+  gem "sunspot_test"
+end
 
-#per gmail
-#gem 'tlsmail'
 
-#gem 'silent-postgres'
+gem 'crowdin-api', group: [:development, :staging]
+gem 'rubyzip', group: [:development, :staging]
 
-#gem "omniauth", '1.0.3'
+group :doc do
+  gem 'sdoc', require: false
+end
 
 gem 'omniauth-facebook'
 gem 'omniauth-google-oauth2'
 gem 'omniauth-twitter'
 gem 'omniauth-meetup'
 gem 'omniauth-linkedin'
-gem 'omniauth-openid'
-
-#gem 'oa-oauth', '>=0.3.2', :require => 'omniauth/oauth'
-
-# Use unicorn as the web server
-# gem 'unicorn'
-
-# Deploy with Capistrano
-# gem 'capistrano'
 
 gem 'paperclip'
 
-gem 'jquery-rails', '2.1.4'
+gem 'aws-sdk'
 
-gem 'jquery-rjs', :git => 'https://github.com/coorasse/jquery-rjs.git'
+gem 'jquery-rails'
 
-gem 'will_paginate'
+gem 'turbolinks'
 
-gem 'bluecloth', '2.0.7'
+gem 'jbuilder', '~> 1.2'
 
-#gem 'oniguruma'
+gem 'devise'
 
-gem 'ultraviolet1x'
+gem 'devise_traceable', github: 'coorasse/devise_traceable'
 
-gem 'devise', '2.0.4'
+gem 'koala', '~> 1.8.0rc1'
 
-gem 'fb_graph'
-
-gem 'exception_notification', '2.6.1'
-
-gem 'resque', :require => 'resque/server'
-#gem 'nfo-resque-mongo', :require => 'resque'#, :git => 'https://github.com/coorasse/resque-mongo.git'
-#gem 'mongo-resque', :require => 'resque'
+gem 'xmpp4r_facebook'
 
 
-gem 'resque_mailer'
+gem 'sinatra', '>= 1.3.0', require: nil
 
-gem 'resque-scheduler'
+gem 'sidekiq'#, '~> 2.17.7' #added for issue https://github.com/tobiassvn/sidetiq/issues/79
+gem 'sidekiq-failures'
+gem 'sidetiq'
 
-gem 'sunspot-queue'
+gem 'sunspot-queue', github: 'coorasse/sunspot-queue'
 
-#gem 'resque-mongo-scheduler'#, :git => 'https://github.com/srmelody/resque-mongo-scheduler.git'
-
-gem 'cancan'
+gem 'cancancan', '~> 1.9'
 
 gem 'foreigner'
 
-gem 'client_side_validations', :git => 'https://github.com/bcardarella/client_side_validations.git', :branch => '3-2-stable'
-#gem 'ar_fixtures'
-
 gem 'sitemap_generator'
 
-#gem 'georuby'
+gem 'geocoder'
 
-gem 'email_preview'
-
-gem 'seed_dump'
-
-gem 'vote-schulze', :git => 'https://github.com/coorasse/vote-schulze.git'
-
-#gem 'rgl', :git => 'git@github.com:coorasse/rgl.git'
-#gem 'rgl'#,  "~> 0.4.0", :git => 'git://github.com/javanthropus/rgl.git'
-
-gem 'quiet_assets', :group => :development
-
-#gem 'airesis_metis', :path => '~/airesis_metis/', :group => :development
-
-#gem 'ruby-metis', :git => 'git@github.com:coorasse/ruby-metis.git'
-
-#gem 'igraph', :git => 'https://github.com/honschi/igraph.git', :group => :development
+gem 'vote-schulze', github: 'coorasse/vote-schulze'
 
 gem 'rails_autolink'
 
@@ -120,10 +101,61 @@ gem 'nickname_generator'
 
 gem 'el_finder'
 
-gem 'recaptcha', :require => 'recaptcha/rails'
+gem 'recaptcha', require: 'recaptcha/rails'
 
 gem 'bullet', group: :development
-
 gem 'thin', group: :development
+gem 'ruby-prof', group: :test
+gem 'test-unit', group: :test
 
-gem 'globalize3'
+gem 'globalize', '~> 4.0.0'
+
+gem 'sanitize'
+
+gem 'wicked_pdf'
+
+gem 'httparty'
+
+gem 'icalendar'
+
+gem 'private_pub'
+
+gem 'rotp'
+
+gem 'ckeditor'
+
+gem 'timezone', github: 'coorasse/timezone'
+
+gem 'friendly_id'
+gem 'simple_form'
+gem 'gemoji'
+gem 'workflow'
+gem 'select2-rails'
+gem 'redcarpet'
+gem 'kaminari'
+
+gem 'mailman', require: false
+
+gem 'email_reply_parser'
+
+gem 'paper_trail', '~> 3.0.0'
+
+gem 'client_side_validations', github: 'coorasse/client_side_validations', branch: '4-0-beta'
+
+gem 'client_side_validations-simple_form', github: 'coorasse/client_side_validations-simple_form'
+
+gem 'figaro'
+
+gem 'faker'
+
+gem 'sshkit', '1.3.0'
+
+gem 'font-awesome-rails'
+
+gem 'truncate_html'
+
+gem 'sunspot-rails-http-basic-auth', github: 'jwachira/sunspot-rails-http-basic-auth'
+
+gem 'activerecord-session_store'
+
+gem "sentry-raven", github: 'getsentry/raven-ruby', group: [:development, :staging, :production]

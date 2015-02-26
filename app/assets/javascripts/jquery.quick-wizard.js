@@ -1,10 +1,10 @@
 (function ($) {
 
     $.fn.quickWizard = function (options, callback) {
-        
+
         var settings = {
-            'prevButton': '<button id="form-wizard-prev" type="button" class="buttonStyle">Torna al passo precedente</button>',
-            'nextButton': '<button id="form-wizard-next" type="button" class="buttonStyle">Procedi</button>',
+            'prevButton': '<button id="form-wizard-prev" type="button" class="btn"><i class="fa fa-arrow-left"></i>Go back</button>',
+            'nextButton': '<button id="form-wizard-next" type="button" class="btn blue"><i class="fa fa-arrow-right"></i>Next</button>',
             'activeClass': 'form-wizard-active',
             'element': 'div.step',
             'submit': '[type = "submit"]',
@@ -12,18 +12,19 @@
             'prevArgs': [0],
             'nextArgs': [0],
             'disabledClass': 'ui-button-disabled ui-state-disabled',
-            'containerClass' : 'form-wizard-container',
+            'containerClass': 'form-wizard-container',
             'breadCrumb': true,
             'breadCrumbElement': 'div.legend',
             'breadCrumbListOpen': '<ol class="bread-crumb">',
             'breadCrumbListClose': '</ol><br/>',
-            'breadCrumbListElementOpen': '<li><div>',
+            'breadCrumbListElementOpen': '<li><div class="step_title">',
             'breadCrumbListElementClose': '</div></li>',
-            'breadCrumbListElementOpenFirst': '<li><div class=\'first\'>',
-            'breadCrumbListElementOpenLast': '<li><div class=\'last\'>',
+            'breadCrumbListElementOpenFirst': '<li><div class="first step_title">',
+            'breadCrumbListElementOpenLast': '<li><div class="last step_title">',
             'breadCrumbActiveClass': 'bread-crumb-active',
             'breadCrumbCompletedClass': 'bread-crumb-completed',
-            'breadCrumbPosition': 'before'
+            'breadCrumbPosition': 'before',
+            'clickableBreadCrumbs': false
         };
 
         if (options) {
@@ -31,50 +32,51 @@
         }
 
         callback = callback || function () { };
-        
+
         function disablePrev(prevObj){
             if ($(prevObj).is(":button")) {
                 $(prevObj).attr('disabled', 'disabled');
+            } else {
+                $(prevObj).addClass(settings.disabledClass);
             }
-            $(prevObj).addClass(settings.disabledClass);
         }
 
         return this.each(function () {
 
             var container = $(this);
-            var children = container.children(settings.element);            
+            var children = container.children(settings.element);
             var activeClassSelector = '.' + settings.activeClass;
             var submitButton = container.find(settings.submit);
             var insertedNextCallback;
             var originalNextCallback;
             var root;
             var breadCrumbList;
-            
-            if(settings.root === null){                
+
+            if(settings.root === null){
                 root = children.first();
             }else{
                 root = $(settings.root);
             }
-            
+
             /* Set up container class */
             if(settings.containerClass != ""){
                 container.addClass(settings.containerClass);
             }
-            
+
             /* Set up bread crumb menu */
             if (settings.breadCrumb) {
-                breadCrumbList = settings.breadCrumbListOpen
+                breadCrumbList = settings.breadCrumbListOpen;
 
-				breadCrumbElements = container.find(settings.breadCrumbElement);
+                breadCrumbElements = container.find(settings.breadCrumbElement);
                 breadCrumbElements.each(function (index) {
-                	if (index == 0) {
-                		breadCrumbList += settings.breadCrumbListElementOpenFirst + $(this).text() + settings.breadCrumbListElementClose;
+                    if (index == 0) {
+                        breadCrumbList += settings.breadCrumbListElementOpenFirst + $(this).html() + settings.breadCrumbListElementClose;
                     }
-                    else if (index == (breadCrumbElements.size()-1)) {
-                    	breadCrumbList += settings.breadCrumbListElementOpenLast + $(this).text() + settings.breadCrumbListElementClose;
+                    else if (index == (breadCrumbElements.size() - 1)) {
+                        breadCrumbList += settings.breadCrumbListElementOpenLast + $(this).html() + settings.breadCrumbListElementClose;
                     }
                     else {
-                    	breadCrumbList += settings.breadCrumbListElementOpen + $(this).text() + settings.breadCrumbListElementClose;                    	
+                        breadCrumbList += settings.breadCrumbListElementOpen + $(this).html() + settings.breadCrumbListElementClose;
                     }
                 });
 
@@ -94,38 +96,43 @@
                 originalNextCallback = settings.nextArgs[settings.nextArgs.length - 1];
 
                 /* then replace it with a wrapper function that calls both the user provided function and ours */
-                settings.nextArgs[settings.nextArgs.length - 1] = function () { insertedNextCallback.call(); originalNextCallback.call(); };
+                settings.nextArgs[settings.nextArgs.length - 1] = function () {
+                    insertedNextCallback.call();
+                    originalNextCallback.call();
+                };
 
             } else {
-                
+
                 /* If there is no callback function append ours */
-                settings.nextArgs[settings.nextArgs.length] = function () { insertedNextCallback.call(); }
+                settings.nextArgs[settings.nextArgs.length] = function () {
+                    insertedNextCallback.call();
+                }
             }
 
             /* Insert the previous and next buttons after the submit button and hide it until we're ready */
-            
+
             var prev = $(settings.prevButton).insertBefore(submitButton);
             var next = $(settings.nextButton).insertBefore(submitButton);
             submitButton.hide();
 
             /*mega pezzotto by Andrea Maresta*/
-            prev.keypress(function(e) {
+            prev.keypress(function (e) {
                 var keyCode = e.keyCode || e.which;
-                if(keyCode == 9) {
-                    if(e.shiftKey) {
+                if (keyCode == 9) {
+                    if (e.shiftKey) {
                         $('.form-wizard-container textarea:visible').last().focus()
                     }
                     else {
-                        prev.nextAll('.buttonStyle:visible').focus();
+                        prev.nextAll('.btn:visible').focus();
                     }
                 }
                 else if (keyCode == 13) {
-                    prev.click();                                                                                                             ù
+                    prev.click();
                 }
             });
-            
-            /* If the root element is first disable the previous button */            
-            if(root.hasClass('root')){
+
+            /* If the root element is first disable the previous button */
+            if (root.hasClass('root')) {
                 disablePrev(prev);
             }
 
@@ -143,22 +150,28 @@
                     if (nextSet.length) {
                         $(active).toggleClass(settings.activeClass);
                         $(nextSet).toggleClass(settings.activeClass);
-                        
+
                         /* Get the current element's position and store it */
                         active.data('posiiton', active.css('position'));
 
                         /* Set our callback function */
-                        insertedNextCallback = function () { active.css('position', active.data('posiiton')); };
+                        insertedNextCallback = function () {
+                            active.css('position', active.data('posiiton'));
+                        };
 
                         /* Call show and hide with the user provided arguments */
-                        active.fadeOut('slow',function() {
-                        	nextSet.fadeIn('slow',function() {
-                        	});
+                        active.fadeOut('slow', function () {
+                            nextSet.fadeIn('slow', function () {
+                            });
                         });
-                        
+
                         /* If bread crumb menu is used make those changes */
                         if (settings.breadCrumb) {
-                            breadCrumbList.find('.' + settings.breadCrumbActiveClass).removeClass(settings.breadCrumbActiveClass).next().addClass(settings.breadCrumbActiveClass);
+                            var activeCrumb_ = breadCrumbList.find('.' + settings.breadCrumbActiveClass);
+                            var nextCrumb_ = activeCrumb_.next();
+                            activeCrumb_.removeClass(settings.breadCrumbActiveClass);
+                            activeCrumb_.addClass(settings.breadCrumbCompletedClass);
+                            nextCrumb_.addClass(settings.breadCrumbActiveClass);
                         }
 
                         /* If the previous button is a button enable it */
@@ -172,9 +185,9 @@
                     /* If there are no more sections, hide the next button and show the submit button */
                     if (afterNextSet.length <= 0) {
                         $(next).hide();
-                        submitButton.show();
+                        submitButton.show().css('display', 'inline-block');
                     }
-                    
+
                     settings.nextCallback(nextSet);
                 }
             });
@@ -185,17 +198,22 @@
                 var beforePrevSet = prevSet.prev(settings.element);
                 if (prevSet.length) {
                     $(active).toggleClass(settings.activeClass);
-                    $(prevSet).toggleClass(settings.activeClass);                    
+                    $(prevSet).toggleClass(settings.activeClass);
                     prevSet.data('posiiton', prevSet.css('position'));
-                    insertedNextCallback = function () { prevSet.css('position', prevSet.data('posiiton')); };
-                    
-                     active.fadeOut('slow',function() {
-                        	prevSet.fadeIn('slow',function() {
-                        	});
+                    insertedNextCallback = function () {
+                        prevSet.css('position', prevSet.data('posiiton'));
+                    };
+
+                    active.fadeOut('slow', function () {
+                        prevSet.fadeIn('slow', function () {
                         });
-                    
+                    });
+
                     if (settings.breadCrumb) {
-                        breadCrumbList.find('.' + settings.breadCrumbActiveClass).removeClass(settings.breadCrumbActiveClass).prev().addClass(settings.breadCrumbActiveClass);
+                        var activeCrumb_ = breadCrumbList.find('.' + settings.breadCrumbActiveClass);
+                        var prevCrumb_ = activeCrumb_.prev();
+                        activeCrumb_.removeClass(settings.breadCrumbActiveClass);
+                        prevCrumb_.addClass(settings.breadCrumbActiveClass);
                     }
                     $(next).show();
                     submitButton.hide();
@@ -203,10 +221,57 @@
                 if (beforePrevSet.length <= 0) {
                     disablePrev(prev);
                 }
-                
+
                 settings.prevCallback(prevSet);
             });
 
+            if(settings.breadCrumb && settings.clickableBreadCrumbs){
+                $('.' + settings.breadCrumbListClass).children().click(function(){
+                    var active = container.find(activeClassSelector);
+                    var current = $(settings.element).eq($(this).index());
+
+                    var prevSet = current.prev(settings.element);
+                    var nextSet = current.next(settings.element);
+
+                    $(active).toggleClass(settings.activeClass);
+                    current.toggleClass(settings.activeClass);
+
+
+                    /* Get the current element's position and store it */
+                    active.data('posiiton', active.css('position'));
+
+                    /* Set our callback function */
+                    insertedNextCallback = function () { active.css('position', active.data('posiiton')); };
+
+                    /* Call show and hide with the user provided arguments */
+                    active.css('position', 'absolute').hide.apply(active, settings.nextArgs);
+                    current.parents().show.apply(current, settings.prevArgs);
+
+                    breadCrumbList.find('.' + settings.breadCrumbActiveClass).removeClass(settings.breadCrumbActiveClass);
+                    $(this).addClass(settings.breadCrumbActiveClass);
+
+                    if(prevSet.length){
+                        $(next).show();
+                        submitButton.hide();
+                    }
+
+                    if ($(prev).is(":button")) {
+                        $(prev).removeAttr('disabled');
+                    } else {
+                        /* If it's anything else, remove the disabled class */
+                        $(prev).removeClass(settings.disabledClass);
+                    }
+
+                    if (prevSet.length <= 0) {
+                        disablePrev(prev);
+                    }
+
+                    if (nextSet.length <= 0) {
+                        $(next).hide();
+                        submitButton.show();
+                    }
+                });
+            }
             callback.call(this);
 
         });
@@ -216,17 +281,39 @@
 
 
 function validElement() {
-  //If the form is valid then go to next else dont
-  var valid = true;
-  // this will cycle through all visible inputs and attempt to validate all of them.
-  // if validations fail 'valid' is set to false
-  $('[data-validate]:input:visible').each(function() {
-    var settings = window.ClientSideValidations.forms[this.form.id];
-    if (!$(this).isValid(settings.validators)) {
-      valid = false
+    //If the form is valid then go to next else dont
+    var valid = true;
+    console.log('valid?');
+    // this will cycle through all visible inputs and attempt to validate all of them.
+    // if validations fail 'valid' is set to false
+    $('[data-validate]:input:visible').each(function () {
+        var settings = window.ClientSideValidations.forms[this.form.id];
+        if (!$(this).isValid(settings.validators)) {
+            valid = false
+        }
+    });
+
+    //var content_ = $('#proposal_sections_attributes_0_paragraphs_attributes_0_content_tbl');
+    //if (content_.is(':visible')) {
+    //    var escapedcontent_ = tinyMCE.get('proposal_sections_attributes_0_paragraphs_attributes_0_content').getContent().replace(/<p>&nbsp;<\/p>/g,'').replace(/\n/g,'').replace(/ /g,'');
+    //    if (escapedcontent_ == '') {
+    //        return false;
+    //    }
+    //}
+
+
+    var choise_ = $('[name="proposal[votation][choise]"]:checked').val();
+    console.log('choise: ' + choise_);
+    if (choise_ == 'new') {
+        var end_ = $('#proposal_votation_end').val();
+        console.log('end: ' + end_);
+        if (end_ == '') {
+            alert('Devi impostare la data fine votazione');
+            e.preventDefault();
+            valid = false;
+        }
     }
-  });
-  
-  // if any of the inputs are invalid we want to disrupt the click event
-  return valid;
+
+    // if any of the inputs are invalid we want to disrupt the click event
+    return valid;
 }

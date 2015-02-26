@@ -1,245 +1,202 @@
 #encoding: utf-8
 class EventsController < ApplicationController
-  include NotificationHelper
-
   layout :choose_layout
-  
-  before_filter :check_events_permissions, :only => [:new, :create]
-  
-  before_filter :load_group, :only => [:index, :list]
-  before_filter :load_event, :only => [:show, :destroy, :move, :resize, :edit]
-  before_filter :check_event_edit_permission,:only => [:destroy, :move, :resize, :edit,:update]
-  
+
+  before_filter :load_group, only: [:index, :new, :create]
+
+  load_and_authorize_resource :group
+  load_and_authorize_resource :event, through: :group, shallow: true
+
+  def index
+    authorize! :view_data, @group if @group
+    respond_to do |format|
+      format.html do
+        @page_title = @group ? t('pages.events.index.title') + " - " + @group.name : t('pages.events.index.title')
+      end
+      format.ics do
+        calendar = Icalendar::Calendar.new
+        @events.each do |event|
+          calendar.add_event(event.to_ics)
+        end
+        calendar.publish
+        render text: calendar.to_ical
+      end
+      format.json do
+        @events = @events.time_scoped(Time.at(params['start'].to_i), Time.at(params['end'].to_i))
+        events = []
+        @events.each do |event|
+          event_obj = event.to_fc
+          if @group
+            event_obj[:group] = @group.name
+            event_obj[:group_url] = group_url(@group)
+          elsif event.groups.first
+            event_obj[:group] = event.groups.first.name
+            event_obj[:group_url] = group_url(event.groups.first)
+          end
+          event_obj[:url] = @group ? group_event_url(@group, event) : event_url(event)
+          events << event_obj
+        end
+        render text: events.to_json
+      end
+    end
+  end
+
   def show
+    authorize! :view_data, @group if @group
     @page_title = @event.title
+    @event_comment = @event.event_comments.new
+    @event_comments = @event.event_comments.includes(:user).order('created_at DESC').page(params[:page]).per(COMMENTS_PER_PAGE)
     respond_to do |format|
       format.js
       format.html
+      format.ics do
+        calendar = Icalendar::Calendar.new
+        calendar.add_event(@event.to_ics)
+        calendar.publish
+        render text: calendar.to_ical
+      end
     end
   end
-  
-  
-   def new 
-    @event = Event.new(starttime: Time.now, endtime: 1.day.from_now, period: "Non ripetere")
+
+
+  def new
+    @title = @group ? "#{@group.name}" : ''
+    if @group
+      if params[:event_type_id] == EventType::VOTAZIONE.to_s
+        authorize! :create_date, @group
+      else
+        authorize! :create_event, @group
+      end
+    else
+      return unless admin_required
+    end
+
+    if params[:event_type_id] == EventType::VOTAZIONE.to_s
+      @title += "- #{t('pages.events.new.title_event')}"
+    else
+      @title += "- #{t('pages.events.new.title_meeting')}"
+    end
+
+    @starttime = params[:starttime] ? Time.at(params[:starttime].to_i / 1000) : Time.now + 10.minutes
+    @endtime = @starttime + 1.days
+
+    @event = Event.new(starttime: @starttime, endtime: @endtime, period: "Non ripetere", event_type_id: params[:event_type_id])
     @meeting = @event.build_meeting
     @election = @event.build_election
-    @place = @meeting.build_place(:comune_id => "1330")
-    if params[:type] == 'election'
-      @event.event_type_id = EventType::ELEZIONI
-      @change_type = false
-    elsif params[:type] == 'votation'
-      @event.event_type_id = EventType::VOTAZIONE
-      @change_type = false
-    else
-      @change_type = true
-    end
+    @place = @meeting.build_place
+
     if params[:proposal_id]
       @event.proposal_id = params[:proposal_id]
     end
-    if params[:group_id]
-      @group = Group.find(params[:group_id])
+    if @group
       @event.private = true
-      respond_to do |format|     
+      respond_to do |format|
         format.js
-        format.html { redirect_to :controller => 'events', :action => 'index', :group_id => params[:group_id], :new_event => 'true', :type => params[:type] }
+        format.html { redirect_to controller: 'events', action: 'index', group_id: params[:group_id], new_event: 'true', event_type_id: (params[:event_type_id] || EventType::INCONTRO) }
       end
     end
   end
-  
+
   def create
-    #se è una votazione ignora tutto ciò che riguarda il luogo e le elezioni
-    if params[:event][:event_type_id] == "2"
-      params[:event].delete(:meeting_attributes)
-      params[:event].delete(:election_attributes)
-    #se è un'elezione ignora tutto ciò che riguarda il luogo
-    elsif params[:event][:event_type_id] == EventType::ELEZIONI.to_s
-      params[:event].delete(:meeting_attributes)
-      params[:event][:election_attributes][:name] = params[:event][:title]
-      params[:event][:election_attributes][:description] = params[:event][:description]
-    #altrimenti elimina tutto ciò che riguarda l'elezione
+    if @group
+      if event_params[:event_type_id] == EventType::VOTAZIONE.to_s
+        authorize! :create_date, @group
+      else
+        authorize! :create_event, @group
+      end
     else
-      params[:event].delete(:election_attributes)
+      return unless admin_required
     end
 
     Event.transaction do
-      if (!params[:event][:period]) || (params[:event][:period] == "Non ripetere")
-        @event = Event.new(params[:event])
-        @event.save!
-
-
-        @event.organizers << @group if @group
-
-        if params[:event][:event_type_id] == EventType::ELEZIONI.to_s
-          @group.elections << @event.election
-          @group.save!
+      if (!event_params[:period]) || (event_params[:period] == "Non ripetere")
+        @event.user = current_user
+        @group ? @group.save! : @event.save!
+        if @event.proposal_id.present?
+          @proposal = Proposal.find(@event.proposal_id)
+          @proposal.vote_period_id = @event.id
         end
       else
-        #      @event_series = EventSeries.new(:frequency => params[:event][:frequency], :period => params[:event][:repeats], :starttime => params[:event][:starttime], :endtime => params[:event][:endtime], :all_day => params[:event][:all_day])
-        @event_series = EventSeries.new(params[:event])
+        @event_series = EventSeries.new(event_params)
         @event_series.save!
       end
 
-      #fai partire il timer per far scadere la proposta fuori dalla transazione
-      if @event.is_votazione?
-        Resque.enqueue_at(@event.starttime, EventsWorker, {:action => EventsWorker::STARTVOTATION, :event_id => @event.id})
-        Resque.enqueue_at(@event.endtime, EventsWorker, {:action => EventsWorker::ENDVOTATION, :event_id => @event.id})
-      end
-
-      notify_new_event(@event)
-    end
-
-    if @event.proposal_id && !@event.proposal_id.empty?
-      @proposal = Proposal.find(@event.proposal_id)
-      @proposal.vote_period_id = @event.id
     end
 
   rescue ActiveRecord::ActiveRecordError => e
-      respond_to do |format|
-        format.js {
-          render :update do |page|             
-            if @event
-              page.alert @event.errors.full_messages.join(";")
-            elsif @event_series
-              page.alert @event_series.errors.full_messages.join(";")
-            end
-          end
-        }
-      end
-  end
-   
-  def index    
-    @page_title = @group ? t('pages.events.index.title') + " - " + @group.name : t('pages.events.index.title') 
-    @can_edit_events = @group ? (can? :create_event, @group) : is_admin?
-  end
-  
-  
-  def list
-    if @group
-    @events = @group.events.all(:conditions => ["starttime >= '#{Time.at(params['start'].to_i).to_formatted_s(:db)}' and starttime < '#{Time.at(params['end'].to_i).to_formatted_s(:db)}'"] )
-    else
-    @events = Event.all(:conditions => ["starttime >= '#{Time.at(params['start'].to_i).to_formatted_s(:db)}' and starttime < '#{Time.at(params['end'].to_i).to_formatted_s(:db)}' and private = false"] )
+    respond_to do |format|
+      format.js { render 'layouts/active_record_error', locals: {object: (@event || @event_series)} }
     end
-    events = [] 
-    @events.each do |event|
-      events << {:id => event.id, 
-                 :title => event.title, 
-                 :description => event.description || "Some cool description here...", 
-                 :start => "#{event.starttime.iso8601}", 
-                 :end => "#{event.endtime.iso8601}", 
-                 :allDay => event.all_day, 
-                 :recurring => event.event_series_id ? true: false,
-                 :backgroundColor => event.backgroundColor,
-                 :textColor => event.textColor,
-                 :editable => !event.is_votazione?}
-    end
-    render :text => events.to_json
   end
-  
-  
-  
+
+
   def move
-    if @event
-      @event.starttime = (params[:minute_delta].to_i).minutes.from_now((params[:day_delta].to_i).days.from_now(@event.starttime))
-      @event.endtime = (params[:minute_delta].to_i).minutes.from_now((params[:day_delta].to_i).days.from_now(@event.endtime))
-      @event.all_day = params[:all_day]
-      @event.save
-    end
+    @event.move(params[:minute_delta].to_i, params[:day_delta].to_i, params[:all_day])
   end
-  
-  
+
+
   def resize
-    if @event
-      @event.endtime = (params[:minute_delta].to_i).minutes.from_now((params[:day_delta].to_i).days.from_now(@event.endtime))
-      @event.save
-    end    
+    @event.resize(params[:minute_delta].to_i, params[:day_delta].to_i)
   end
-  
+
   def edit
   end
-  
-  def update
-    @event = Event.find_by_id(params[:event][:id])
-    if params[:event][:commit_button] == "Aggiorna tutte le occorrenze"
-      @events = @event.event_series.events
-      @event.update_events(@events, params[:event])
-    elsif params[:event][:commit_button] == "Aggiorna tutte le occorrenze successive"
-      @events = @event.event_series.events.all(:conditions => ["starttime > '#{@event.starttime.to_formatted_s(:db)}' "])
-      @event.update_events(@events, params[:event])
-    else
-      @event.attributes = params[:event]
-      @event.save
-    end
 
-    flash[:notice] = "Aggiornamento avvenuto correttamente"
-    render :update do |page|
-      page<<"$('#calendar').fullCalendar( 'refetchEvents' )"
-      page<<"$('#desc_dialog').dialog('destroy')" 
-      page.replace_html "flash_messages", :partial => 'layouts/flash', :locals => {:flash => flash}
+  def update
+    if @event.update(event_params)
+      flash[:notice] = t('info.events.event_updated')
+      respond_to do |format|
+        format.js
+        format.html { redirect_to @group ? group_event_url(@group, @event) : event_url(@event) }
+      end
+    else
+      respond_to do |format|
+        format.js { render 'layouts/active_record_error', locals: {object: @event || @event_series} }
+        format.html { render :edit }
+      end
     end
-    
-  end  
-  
+  end
+
   def destroy
     if params[:delete_all] == 'true'
       @event.event_series.destroy
     elsif params[:delete_all] == 'future'
-      @events = @event.event_series.events.all(:conditions => ["starttime > '#{@event.starttime.to_formatted_s(:db)}' "])
+      @events = @event.event_series.events.where(["starttime > '#{@event.starttime.to_formatted_s(:db)}' "])
       @event.event_series.events.delete(@events)
     else
       @event.destroy
     end
-    
-    render :update do |page|
-      page<<"$('#calendar').fullCalendar( 'refetchEvents' )"
-      page<<"$('#desc_dialog').dialog('destroy')" 
+    flash[:notice] = t('info.events.event_deleted')
+
+    respond_to do |format|
+      format.html {
+        @group = @event.groups.first if @event.groups.count > 0
+        redirect_to @group ? group_events_path(@group) : events_path
+      }
     end
-    
   end
-  
+
   protected
+
+  def event_params
+    params[:event].delete(:meeting_attributes) if params[:event][:event_type_id] == EventType::VOTAZIONE.to_s
+    params.require(:event).permit(:id, :title, :starttime, :endtime, :frequency, :all_day, :description, :event_type_id, :private, :proposal_id, meeting_attributes: [:id, place_attributes: [:id, :comune_id, :address, :latitude_original, :longitude_original, :latitude_center, :longitude_center, :zoom]])
+  end
 
   def choose_layout
     @group ? "groups" : "open_space"
-  end  
-
-
-  def load_group
-    @group = Group.find(params[:group_id]) rescue nil
-  end
-  
-  def load_event 
-    @event = Event.find_by_id(params[:id])
-    #@group = @event.meeting_organizations.first.group rescue nil
   end
 
+  private
 
-  def check_event_edit_permission
-    @event = Event.find_by_id(params[:id])
-    if @event.is_votazione?
-      if (params[:action] != 'destroy') || (@event.proposals.count > 0)
-        permissions_denied
-        return
-      end
+  def render_404(exception=nil)
+    log_error(exception) if exception
+    respond_to do |format|
+      @title = t('error.error_404.events.title')
+      @message = t('error.error_404.events.description')
+      format.html { render "errors/404", status: 404, layout: true }
     end
-    return true if is_admin?
-    org = @event.organizers.first
-    if !org
-      permissions_denied
-      return
-    end
-    p = org.portavoce
-    permissions_denied if (!current_user || !(p.include?current_user))
+    true
   end
-
-
-  def check_events_permissions
-    group_id = params[:group_id]
-    @group = Group.find_by_id(group_id)
-    return if is_admin?
-    permissions_denied if !group_id
-    permissions_denied if !@group
-    permission_denied if (cannot? :create_event, @group)
-  end
-
 
 end

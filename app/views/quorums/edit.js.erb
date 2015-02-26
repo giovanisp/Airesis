@@ -1,13 +1,7 @@
-$('#edit_quorum_container').html("<div  class='ui-state-highlight'><b>Attenzione! Le modifiche al quorum non influenzeranno le proposte alle quali è già stato assegnato!</b></div><br/><%= escape_javascript(render(:partial => 'quorums/form', :locals => {:button_name => "Aggiorna"}))%>");
+var container_ = $('<div id="quorum_container"class="reveal-modal medium" data-reveal></div>');
+$('body').append(container_);
+container_.html("<%= j (render(partial: 'quorums/form', locals: {button_name: t('buttons.update')}))%>");
 
-$('#edit_quorum_container').dialog({
-    width: 500,
-    height: 'auto',
-    modal : true,
-    resizable: false,
-    close : function(event, ui) {
-        $('#edit_quorum_container').dialog('destroy');
-        $('#edit_quorum_container').empty();
-    }
-});
+airesis_reveal(container_);
+container_.find('form').enableClientSideValidations();
 

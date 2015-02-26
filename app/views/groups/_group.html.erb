@@ -1,114 +1,124 @@
-<%= form_for @group, :validate => true do |f| %>
-    <%= render :partial => 'fragments/error_messages', :locals => {:resource => @group} %>
-
-    <p>
-      <%= f.label :name %><br/>
-      <%= f.text_field :name, placeholder: t('activerecord.attributes.group.name_placeholder'), style: "width: 600px" %>
-    </p>
-
-    <p>
-      <%= f.label :title_bar %><br/>
-      <%= f.text_field :title_bar, placeholder: t('activerecord.attributes.group.title_bar_placeholder'), style: "width: 600px" %>
-    </p>
-
-    <p>
-      <%= f.label :description %><br/>
-      <%= f.text_area :description, placeholder: t('activerecord.attributes.group.description_placeholder'), style: 'width:600px; height:100px;' %>
-    </p>
-    <p>
-      <%= f.label :image_url %><br/>
-      <%= f.text_field :image_url, placeholder: t('activerecord.attributes.group.image_url_placeholder'), style: "width: 600px" %>
-    </p>
-    <% if ::Configuration::socialnetwork_active %>
-        <p>
-          <%= f.label :facebook_page_url %><br/>
-          <%= f.text_field :facebook_page_url, placeholder: t('activerecord.attributes.group.facebook_page_url_placeholder'), style: "width: 600px" %>
-        </p>
-    <% end %>
-
-    <p>
-      <%= f.label :accept_requests %><br/>
-      <%= f.radio_button :accept_requests, 'p' %>
-      <%= t('pages.groups.accept_requests.portavoce')%><br/>
-      <!--<%= f.radio_button :accept_requests, 'v', :disabled => "disabled", :title => t('unavailable_option') %>Votazione: quando un utente richiede di partecipare al gruppo, tutti gli altri partecipanti devono esprimere il loro parere entro X giorni, al termine dei quali viene determinato se l'utente può entrare o meno.'<br/>
-	<%= f.radio_button :accept_requests, 'b', :disabled => "disabled", :title => t('unavailable_option') %>Entrambi: avviene la votazione solo a seguito dell'accettazione da parte del portavoce.<br/>
-	-->
-    </p>
-
-    <p>
-
-      <%= f.label :interest_border_tkn %>
-      <%= f.text_field :interest_border_tkn, "data-pre" => ([@group.interest_border].to_json if @group.interest_border) %>
-    </p>
-
-
-    <% if ['new', 'create'].include? params[:action] %>
-        <p>
-          <%= f.label :default_role_name %>    <br/>
-          <%= f.text_field :default_role_name, placeholder: t('activerecord.attributes.group.default_role_name_placeholder'), style: "width: 400px" %>
-          <a href="#" onclick="apri_permessi();return false;"><%= t('pages.groups.new.change_permissions_button') %></a>
-        </p>
-
-        <div id="permessi" title="<%= t('pages.groups.new.change_permissions_title')%>" style="display:none;">
-          <%= t('pages.groups.new.change_permissions_description') %><br/>
-          <% GroupAction.all.each do |action| %>
-              <%= f.check_box :default_role_actions, {:multiple => true}, action.id, nil %> <%= f.label action.description %>
-              <br/>
-          <% end %>
+<%= simple_form_for @group, url: in_subdomain? ? '/update' : nil, validate: true, html: {multipart: true} do |f| %>
+    <%= f.error_notification %>
+    <% if @group.is_private? %>
+        <div class="panel callout">
+          <p>
+            <%= t('pages.groups.edit.private_warning_html', link: (link_to t('pages.groups.administration_panel.proposals'), group_quorums_url(@group))) %>
+          </p>
         </div>
-    <% else %>
-        <%= link_to t('pages.groups.edit.change_permissions'), edit_permissions_group_path(@group) %>
     <% end %>
 
-    <p>
-      <%= f.submit button_name, :class => 'buttonStyle' %>
-    </p>
+    <%= f.input :name, placeholder: t('activerecord.attributes.group.name_placeholder') %>
+
+    <%= f.input :description, as: :ckeditor, input_html: {row: 5, ckeditor: {toolbar: 'blog', language: I18n.locale, wordcount: {showCharCount: true, showWordCount: false, charLimit: 2000, countHTML: true}}}, required: true %>
+
+    <% if ['edit', 'update'].include? action_name %>
+        <%= f.label :rule_book %>
+        <%= f.cktext_area :rule_book, row: 5, ckeditor: {toolbar: 'blog', language: I18n.locale} %>
+    <% end %>
+
+    <%= f.input :tags_list, label: t('pages.groups.new.tags.title') %>
+
+    <%= f.input :image, accept: "image/jpeg,image/png" %>
+
+    <%= f.input :interest_border_tkn, input_html: {data: {pre: ([@group.interest_border].to_json if @group.interest_border)}}, required: true %>
+
+    <% if ['new', 'create'].include? action_name %>
+        <%= f.input :default_role_name, placeholder: t('activerecord.attributes.group.default_role_name_placeholder') %>
+        <a href="#" data-reveal-id="permessi"><%= t('pages.groups.new.change_permissions_button') %></a>
+
+        <div id="permessi" class="reveal-modal" data-reveal>
+          <h2><%= t('pages.groups.new.change_permissions_title') %></h2>
+
+          <div class="alert-box info">
+            <%= t('pages.groups.new.change_permissions_description') %>
+          </div>
+
+          <% GroupAction.all.each do |action| %>
+              <%= f.label action.description do %>
+                  <%= f.check_box :default_role_actions, {multiple: true}, action.id, nil %>
+                  <%= action.description %>
+              <% end %>
+
+          <% end %>
+
+          <a href="#" class="btn" id="default_permissions_button">Default</a>
+          <a href="#" class="btn blue" id="change_permissions_button">Ok</a>
+        </div>
+
+        <%= f.input :admin_title, placeholder: t('activerecord.attributes.group.admin_title_placeholder') %>
+
+        <%= f.submit button_name, class: 'btn blue', data: {disable_with: t('saving')} %>
+
+    <% else %>
+        <%= f.input :admin_title, placeholder: t('activerecord.attributes.group.admin_title_placeholder') %>
+
+        <%= f.label :private, title: "Chi non è membro del gruppo può visualizzare solo il regolamento e le proposte pubbliche" do %>
+            <%= f.check_box :private %>
+            <%= t('activerecord.attributes.group.private') %>
+        <% end %>
+
+        <%= link_to t('pages.groups.edit.change_permissions'), group_participation_roles_path(@group) %>
+        <div>
+          <%= f.submit button_name, class: 'btn blue', data: {disable_with: t('updating')} %>
+          <%= link_to @group, method: :delete, data: {confirm: t('pages.groups.show.confirm_destroy')}, class: 'btn red right' do %>
+              <i class="fa fa-trash-o"></i>
+              <%= t('pages.groups.show.destroy_button') %>
+          <% end if can? :destroy, @group %>
+        </div>
+    <% end %>
 <% end %>
 
 <script type="text/javascript">
     $(function () {
-        $('#group_description')
-                .charCount({
-                    counterElement: 'div',
-                    allowed: 2000,
-                    warning: 100
-                });
-
-        $('#group_interest_border_tkn').tokenInput("/interest_borders.json", {
+        $('#group_interest_border_tkn').tokenInput("<%=interest_borders_path(format: :json )%>", {
             crossDomain: false,
             prePopulate: $('#group_interest_border_tkn').data("pre"),
-            hintText: "<%='Digita alcuni caratteri per cercare un luogo'%>",
-            noResultsText: "<%='Nessun luogo trovato'%>",
-            searchingText: "<%='Sto cercando...'%>",
+            hintText: "<%=t('interest_borders.hint')%>",
+            noResultsText: "<%=t('interest_borders.no_place_found')%>",
+            searchingText: "<%=t('interest_borders.searching')%>",
             preventDuplicates: true,
-            tokenLimit: 1
+            tokenLimit: 1,
+            allowTabOut: true
         });
 
     });
 
 
     <%if ['new','create'].include? params[:action]%>
-    function apri_permessi() {
-        $('#permessi')
-                .dialog({width: 630,
-                    height: 'auto',
-                    modal: true,
-                    resizable: false,
-                    buttons: {
-                        "Ok": function () {
-                            $(this).dialog("close");
-                        },
-                        "Default": function () {
-                            $("input[name=group\\[default_role_actions\\]\\[\\]]").attr('checked', false);
-                            <%@group.default_role_actions.each do |id|%>
-                            $('#group_default_role_actions_<%=id%>').attr('checked', true);
-                            <%end%>
-                        }
-                    },
-                    beforeClose: function () {
-                        $('#permessi').closest('.ui-dialog').detach().appendTo('#new_group');
-                    }
-                });
-    }
+
+
+    $('#change_permissions_button').click(function () {
+        $('#permessi').foundation('reveal', 'close');
+        return false;
+    });
+
+    $('#default_permissions_button').click(function () {
+        $("input[name=group\\[default_role_actions\\]\\[\\]]").prop('checked', false);
+        <%@group.default_role_actions.each do |id|%>
+        $('#group_default_role_actions_<%=id%>').prop('checked', true);
+        <%end if @group.default_role_actions%>
+        return false;
+    });
+
     <%end%>
+
+    $(function () {
+        var input = $('#group_tags_list')
+        if (input != null) {
+            input.tokenInput("<%=tags_path(format: :json )%>", {
+                theme: "facebook",
+                crossDomain: false,
+                allowFreeTagging: true,
+                minChars: 3,
+                prePopulate: <%=raw @group.tags.map{|t| {id: t.text, name: t.text}}.to_json.to_s%>,
+                hintText: "<%=t('digit_tags')%>",
+                searchingText: "<%=t('digit_tags')%>",
+                preventDuplicates: true,
+                allowTabOut: true,
+                tokenValue: "name",
+                tokenLimit: 5
+            })
+        }
+    });
 </script>

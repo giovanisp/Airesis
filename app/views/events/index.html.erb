@@ -1,6 +1,2 @@
-<%if @group%>
-<h2><%= t('pages.events.index.group_title') %></h2>
-<%else%>
-<h2><%= t('pages.groups.index.open_space_title') %></h2>
-<%end%>
-<%=render :partial => "calendar", :locals => {:can_edit_events => @can_edit_events, :group => @group} %>
+<%@extend = true %>
+<%=render partial: "calendar", locals: {group: @group} %>

@@ -1,10 +1,11 @@
 #encoding: utf-8
+#todo che cazzo fa sto controller?
 class RequestVotesController < ApplicationController
    
-  before_filter :load_group, :only => [:show,:edit,:update,:destroy,:ask_for_partecipation, :partecipation_request_confirm]
-  before_filter :authenticate_user!, :only => [:new, :create, :edit, :update, :destroy]
-  before_filter :check_author,   :only => [:new, :create, :edit, :update, :destroy]
-  before_filter :admin_required, :only => [:new, :create, :destroy]
+  before_filter :load_group, only: [:show,:edit,:update,:destroy,:ask_for_participation, :participation_request_confirm]
+  before_filter :authenticate_user!, only: [:new, :create, :edit, :update, :destroy]
+  before_filter :check_author,   only: [:new, :create, :edit, :update, :destroy]
+  before_filter :admin_required, only: [:new, :create, :destroy]
   
   
   
@@ -19,21 +20,18 @@ class RequestVotesController < ApplicationController
   
   def index
     @groups = Group.all
-
     respond_to do |format|
       format.html # index.html.erb
-      format.xml  { render :xml => @groups }
     end
   end
 
   
   def show
-    @partecipants = @group.partecipants
-    @group_posts = @group.posts.published.paginate(:page => params[:page], :per_page => COMMENTS_PER_PAGE, :order => 'published_at DESC')
+    @group_participations = @group.participants
+    @group_posts = @group.blog_posts.published.page(params[:page]).per(COMMENTS_PER_PAGE)
 
     respond_to do |format|
       format.html # show.html.erb
-      format.xml  { render :xml => @group }
     end
   end
 
@@ -43,7 +41,6 @@ class RequestVotesController < ApplicationController
 
     respond_to do |format|
       format.html # new.html.erb
-      format.xml  { render :xml => @group }
     end
   end
 
@@ -57,10 +54,8 @@ class RequestVotesController < ApplicationController
       if @group.save
         flash[:notice] = 'Hai creato il gruppo.'
         format.html { redirect_to(@group) }
-        format.xml  { render :xml => @group, :status => :created, :location => @group }
       else
-        format.html { render :action => "new" }
-        format.xml  { render :xml => @group.errors, :status => :unprocessable_entity }
+        format.html { render action: "new" }
       end
     end
   end
@@ -69,14 +64,14 @@ class RequestVotesController < ApplicationController
     
     begin
       Group.transaction do
-      pop = @group.group_partecipations
+      pop = @group.group_participations
       pop.each do |p|
         p.destroy
       end
       
-      partecipant_ids = params[:group][:partecipant_tokens].split(",")
-      partecipant_ids.each do |id|
-        part = GroupPartecipation.new
+      participant_ids = params[:group][:participant_tokens].split(",")
+      participant_ids.each do |id|
+        part = GroupParticipation.new
         part.user_id = id
         part.group_id = @group.id        
         saved = part.save
@@ -88,10 +83,8 @@ class RequestVotesController < ApplicationController
         if @group.update_attributes(params[:group])
           flash[:notice] = 'Gruppo aggiornato correttamente.'
           format.html { redirect_to(@group) }
-          format.xml  { head :ok }
         else
-          format.html { render :action => "edit" }
-          format.xml  { render :xml => @group.errors, :status => :unprocessable_entity }
+          format.html { render action: "edit" }
         end
       end
     
@@ -108,21 +101,19 @@ class RequestVotesController < ApplicationController
 
     respond_to do |format|
       format.html { redirect_to(groups_url) }
-      format.xml  { head :ok }
     end
   end
   
   #fa partire una richiesta per la partecipazione dell'utente corrente al gruppo
-  def ask_for_partecipation
-          
-   request = current_user.group_partecipation_requests.find_by_group_id(@group.id)
+  def ask_for_participation
+   request = current_user.group_participation_requests.find_by(group_id: @group.id)
    if (!request)
-     partecipation = current_user.groups.find_by_id(@group.id)
-     if (partecipation)
-       request = GroupPartecipationRequest.new
+     participation = current_user.groups.find_by_id(@group.id)
+     if (participation)
+       request = GroupParticipationRequest.new
        request.user_id = current_user.id
        request.group_id = @group.id
-       request.group_partecipation_request_status_id = 3
+       request.group_participation_request_status_id = 3
         saved = request.save
         if (!saved)
           flash[:notice] = 'Errore nella richiesta di partecipazione. Ma fai già parte di questo gruppo!'
@@ -130,10 +121,10 @@ class RequestVotesController < ApplicationController
          flash[:error] = 'Fai già parte di questo gruppo ma la tua richiesta non è mai stata registrata. Dati corretti.'
         end       
      else     
-       request = GroupPartecipationRequest.new
+       request = GroupParticipationRequest.new
        request.user_id = current_user.id
        request.group_id = @group.id
-       request.group_partecipation_request_status_id = 1
+       request.group_participation_request_status_id = 1
        saved = request.save
        if (!saved)
          flash[:error] = 'Errore nella richiesta di partecipazione.'
@@ -149,14 +140,14 @@ class RequestVotesController < ApplicationController
  end
  
  #accetta una richiesta di partecipazione passandola allo stato IN VOTAZIONE
- def partecipation_request_confirm
+ def participation_request_confirm
    if ((current_user && (@group.portavoce.include?current_user)) || is_admin?)
-     request = @group.partecipation_requests.pending.find_by_id(params[:request_id])
+     request = @group.participation_requests.pending.find_by_id(params[:request_id])
      if (!request)
        flash[:error] = 'Richiesta non trovata. Errore durante l''operazione'
        redirect_to group_url(@group)
      else
-       request.group_partecipation_request_status_id = 2
+       request.group_participation_request_status_id = 2
        saved = request.save
        if (!saved)
          flash[:error] = 'Errore surante l''operazione. Impossibile procedere.'
@@ -171,12 +162,5 @@ class RequestVotesController < ApplicationController
    end
    
  end
- 
- 
- 
- protected
- 
-  def load_group
-    @group = Group.find(params[:id])
-  end
+
 end

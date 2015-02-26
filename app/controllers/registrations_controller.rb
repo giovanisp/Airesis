@@ -1,14 +1,16 @@
 class RegistrationsController < Devise::RegistrationsController
 
   def create
+    session[:subdomain] = request.subdomain
+    session[:remote_ip] = request.remote_ip
     if session[:omniauth] == nil
-      if verify_recaptcha
+      if !::Configuration.recaptcha || verify_recaptcha
         super
         session[:omniauth] = nil unless @user.new_record?
       else
         build_resource
         clean_up_passwords(resource)
-        flash[:alert] = t('controllers.registrations.create.recaptcha_ko')
+        flash[:alert] = t('error.registration.recaptcha')
         render :new
       end
     else
@@ -21,18 +23,14 @@ class RegistrationsController < Devise::RegistrationsController
 
   def after_sign_up_path_for(resource)
     if session[:invite]
-      ret = session[:invite][:return]
-      ret
+      session[:invite][:return]
     else
-      '/users/sign_in'
+      new_user_session_path
     end
   end
 
   def after_inactive_sign_up_path_for(resource)
-    '/users/sign_in'
+    new_user_session_path
   end
-
-
-
 
 end

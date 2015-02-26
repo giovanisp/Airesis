@@ -1,70 +1,10 @@
 <div class="title">
   <%= t('pages.home.show.your_proposals') %>
 </div>
-<% unless current_user.proposals.empty? %>
-    <div style="overflow-y:scroll;height: 260px;">
-      <table id="proposals_table" class="table_list">
-        <thead>
-        <th><%= t('pages.home.show.proposals.title') %></th>
-        <th><%= t('pages.home.show.proposals.last_edit') %></th>
-        </thead>
-        <tbody>
-        <% current_user.proposals.current.includes(:users, :quorum).each do |proposal| %>
 
-            <tr>
-              <td><%= link_to_proposal proposal %>
-                <br>
-                <div style="float: left; margin-right: 5px;"><%= t('pages.home.show.proposals.authors') %></div>
-                <% if signed_in? && (proposal.users.include? current_user) %>
-                    <% proposal.users.each do |user| %>
-                        <%= user_tag_mini(user) %>
-                    <% end %>
-                <% else %>
-                    <% proposal.users.each do |user| %>
-                        <%= user_tag_mini(user, proposal) %>
-                    <% end %>
-                <% end %>
-
-                <%= user_valutation_image(current_user, proposal) %>
-              </td>
-              <td align="center">
-                <%= proposal.updated_at.strftime("%d/%m/%Y %H:%M") %>
-                <br>
-                <% if proposal.is_standard? %>
-                    <%= render :partial => 'proposals/rank_bar', :locals => {:proposal => proposal} %>
-                <% end %>
-              </td>
-
-            </tr>
-        <% end %>
-        </tbody>
-
-      </table>
+<% @proposals_p = Proposal.home_portlet(current_user) %>
+   <% unless @proposals_p.empty? %>
+    <div class="scrollable">
+      <%= render partial: 'proposals/mini_proposal', collection: @proposals_p, as: 'proposal' %>
     </div>
-
-    <script type="text/javascript">
-        $('#proposals_table').dataTable({
-            "oLanguage": {
-                "sLengthMenu": "Mostra _MENU_ proposte per pagina",
-                "sSearch": "<%='Cerca:'%>",
-                "sZeroRecords": "<%='Nessuna proposta, spiacente..'%>",
-                "sInfo": "Sto mostrando da _START_ a _END_ di _TOTAL_ proposte",
-                "sInfoEmpty": "Sto mostrando 0 proposte",
-                "sInfoFiltered": "(filtrate da un totale di _MAX_ proposte)",
-                "oPaginate": {
-                    "sPrevious": "",
-                    "sNext": ""
-                },
-            },
-            "aoColumns": [null, null],
-            "aaSorting": [
-                [ 3, "asc" ]
-            ],
-            "bInfo": false,
-            "bLengthChange": false,
-        });
-
-        $('#proposals_table_wrapper label').css("font-weight", "normal").css("font-size", "12px");
-
-    </script>
 <% end %>

@@ -1,54 +1,44 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-US">
-	<head>
-		<title><%= (@page_title || t('open_space')) + ' - ' + APP_SHORT_NAME%></title>
-		
-		<%=render :partial => "layouts/head" %>
-        <%= stylesheet_link_tag 'menu_left' %>
-		<meta name="description" content="<%= (@page_descr)%>">
+<% @nomargin=true %>
+<% @extend=true %>
+<% content_for :menu do %>
+    <div class="topimage hide-for-small">
+      <%= image_tag 'logo120.png', width: 40, alt: ENV['APP_LONG_NAME'] %>
+    </div>
+    <div class="topmenu <%= 'noleft' unless content_for? :left_panel %>">
+      <span class="tit"><%= @page_title %></span>
 
-    </head>
-    <body>
-		
-    <%=render :partial => "layouts/header" %>
-		
-	<div id="subheader" class="ui-widget-header ui-state-default">
-		<div class="body_maxwidth">
-			<div class="header_image">
-		    	    	<%= image_tag 'logo120.png', :width => 120, :alt =>"Airesis - Democrazia Diretta" %>
-		    </div>
-	      <div class="group_title">
-			<h1><%=@page_title%></h1>
-			<%= link_to 'Cos\'è Airesis?', edemocracy_path, :class => 'coseButton' %>
-            <%= link_to 'Partecipa allo sviluppo', partecipa_path, :class => 'sviluppoButton' %>
-			<%= link_to 'Video guide', videoguide_path, :class => 'videoButton' %>
-			<%= link_to 'Chi siamo', chisiamo_path, :class => 'chisiamoButton' %>
-			<%= link_to 'Sostienici', sostienici_path, :class => 'sostieniButton' %>
-			
-			</div>
-		</div>
-			
-	</div>
-		
-		<!-- ##### Main Copy ##### -->
-		<div id="main-copy">
-		  <div id="groups_leftpanel">
-		   <%= yield :left_panel%>
-		  </div>
-			<div id="centerpanelextended" style="font-size: 16px; line-height: 22px;"><%= yield :layout %></div>
-			<div style="clear: both; height: 0; overflow: hidden;"></div>
-			<%=render :partial => "layouts/footer" %>
-		</div>
+      <div class="submenu">
+        <%= link_to(edemocracy_path, class: ((['whatis', 'intro'].include? params[:action]) ? 'sel' : '')) do %>
+            <span class="show-for-large-up"><%= t('pages.home.index.whatis') %></span>
+        <% end %>
+        <span> ⋅ </span>
+        <%= link_to(partecipa_path, class: ((['engage'].include? params[:action]) ? 'sel' : '')) do %>
+            <span class="show-for-large-up"><%= t('pages.home.index.partecipate') %></span>
+        <% end %>
+        <span> ⋅ </span>
+        <%= link_to(videoguide_path, class: ((['videoguide'].include? params[:action]) ? 'sel' : '')) do %>
+            <span class="show-for-large-up"><%= t('pages.home.index.videos') %></span>
+        <% end %>
+        <span> ⋅ </span>
+        <%= link_to(chisiamo_path, class: ((['whowe', 'story'].include? params[:action]) ? 'sel' : '')) do %>
+            <span class="show-for-large-up"><%= t('pages.home.index.whowe') %></span>
+        <% end %>
+        <span> ⋅ </span>
+        <%= link_to(sostienici_path, class: ((['helpus'].include? params[:action]) ? 'sel' : '')) do %>
+            <span class="show-for-large-up"><%= t('pages.header.support_us') %></span>
+        <% end %>
+        <span> ⋅ </span>
+        <%= link_to(roadmap_path, class: (params[:action] == 'roadmap' ? 'sel' : '')) do %>
+            <span class="show-for-large-up"><%= 'ROADMAP' %></span>
+        <% end %>
+        <% unless in_subdomain? %>
+            <span> ⋅ </span>
+            <%= link_to(press_path, class: (params[:action] == 'press' ? 'sel' : '')) do %>
+                <span class="show-for-large-up"><%= 'PRESS' %></span>
+            <% end %>
+        <% end %>
+      </div>
+    </div>
+<% end %>
 
-
-        <script type="text/javascript">
-          $(function(){
-              $('.sviluppoButton').button({icons : {primary : "ui-icon-pencil"}});
-              $('.coseButton').button({icons : {primary : "ui-icon-help"}});
-              $('.videoButton').button({icons : {primary : "ui-icon-video"}});
-              $('.chisiamoButton').button({icons : {primary : "ui-icon-person"}});
-              $('.sostieniButton').button({icons : {primary : "ui-icon-heart"}});
-          });
-        </script>
-	</body>
-</html>
+<%= render 'layouts/general' %>

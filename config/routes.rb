@@ -1,64 +1,56 @@
-DemocracyOnline3::Application.routes.draw do
+require 'sidekiq/web'
+
+Airesis::Application.routes.draw do
+
+  resources :searches
+
+  resources :sys_payment_notifications
+
+  resources :sys_features
+
+  mount Ckeditor::Engine => '/ckeditor'
+
+  get 'home' => 'home#show'
+  get 'landing' => 'home#landing'
+  get 'public' => 'home#public'
+  get 'partecipa' => 'home#engage'
+  get 'chisiamo' => 'home#whowe'
+  get 'roadmap' => 'home#roadmap'
+  get 'bugtracking' => 'home#bugtracking'
+  get 'videoguide' => 'home#videoguide'
+  get 'edemocracy' => 'home#intro'
+  get 'eparticipation' => 'home#intro'
+  get 'story' => 'home#story'
+  get 'sostienici' => 'home#helpus'
+  get 'donations' => 'home#donations'
+  get 'press' => 'home#press'
+  get 'privacy' => 'home#privacy'
+  get 'terms' => 'home#terms'
+  post 'send_feedback' => 'home#feedback'
+  get 'statistics' => 'home#statistics'
+  get 'movements' => 'home#movements'
+  get 'school' => 'home#school'
+  get 'municipality' => 'home#municipality'
+
+  resources :user_likes
+
+  resources :proposal_nicknames
+
+  #common routes both for main app and subdomains
 
 
-  resources :tutorial_progresses
-
-  resources :tutorials do
-    resources :steps  do
-      member do
-        get :complete
-      end
-    end
-    resources :tutorial_assignees
-  end
-
-  devise_for :users, :controllers => { :omniauth_callbacks => "users/omniauth_callbacks", :registrations => "registrations"} do
-    get '/users/sign_in' , :to => 'devise/sessions#new'
-    get '/users/sign_out', :to => 'devise/sessions#destroy'
-    get '/users/auth/:provider' => 'users/omniauth_callbacks#passthru'
-  end
-
-
-
-  root :to => 'home#index'
-
-  #match ':controller/:action/:id'
-
-  resources :users do
+  resources :quorums do
     collection do
-      get :confirm_credentials
-      get :alarm_preferences #preferenze allarmi utente
-      get :border_preferences #preferenze confini di interesse utente
-      post :set_interest_borders #cambia i confini di interesse
-      post :join_accounts
-      get :privacy_preferences
-      post :change_show_tooltips
-      post :change_show_urls
-      post :change_receive_messages
-    end
-
-    member do
-      get :show_message
-      post :send_message
+      get :dates
+      get :help
     end
   end
 
-  resources :notifications do
-    collection do
-      post :change_notification_block
-      post :change_email_notification_block
-      post :change_email_block
-    end
-  end
-
-
-  resources :proposal_categories do
-    get :index, scope: :collection
-  end
+  resources :best_quorums, controller: 'quorums'
+  resources :old_quorums, controller: 'quorums'
 
   resources :proposals do
     collection do
-      get :index_accepted
       get :endless_index
       get :similar
       get :tab_list
@@ -69,69 +61,88 @@ DemocracyOnline3::Application.routes.draw do
         put :rankup
         put :ranknil
         put :rankdown
-        post :show_all_replies
+        get :show_all_replies
+        put :unintegrate
+        get :history
       end
       collection do
-        post :list
+        post :mark_noise
+        get :list
+        get :left_list
+        get :edit_list
+        post :report
+        get :noise
+        get :manage_noise
       end
     end
 
-    resources :proposal_histories
+    resources :proposal_revisions
+    resources :proposal_lives
     resources :proposal_supports
+    resources :proposal_presentations
+
+    resources :blocked_proposal_alerts do
+      collection do
+        post :block
+        post :unlock
+      end
+    end
 
     member do
       get :rankup
       get :rankdown
       get :statistics
-      put :set_votation_date
+      patch :set_votation_date
       post :available_author
       get :available_authors_list
       put :add_authors
       get :vote_results
       post :close_debate
+      patch :regenerate
+      get :geocode
+      get :facebook_share
+      get :promote
+      post :facebook_send_message
+      get :banner
+      get :test_banner
     end
   end
 
-  resources :proposalcategories
+  resources :proposal_categories
 
-  resources :blogs do
-    resources :blog_posts do
-      #match :tag, :on => :member
-      match :drafts, :on => :collection
-      resources :blog_comments
+
+
+  resources :announcements do
+    member do
+      post :hide
     end
   end
 
+  resources :sys_movements
 
-  resources :blog_posts
+  resources :tutorial_progresses
+
+  resources :tutorials do
+    resources :steps do
+      member do
+        get :complete
+      end
+    end
+    resources :tutorial_assignees
+  end
 
   resources :alerts do
     member do
-      get :check_alert
+      get :check
+      get :check_alert #todo remove in one year from 08-05-2014
     end
 
     collection do
-      get :polling
-      get :read_alerts
+      get :proposal
+      post :check_all
     end
   end
 
- resources :interest_borders
- resources :comunes
-
-
-  resources :events do
-    resources :meeting_partecipations
-    member do
-      post :move
-      post :resize
-    end
-    collection do
-      get :list
-    end
-  end
-
-  resources :group_partecipations
   resources :group_invitations do
     collection do
       get :accept
@@ -140,31 +151,85 @@ DemocracyOnline3::Application.routes.draw do
     end
   end
 
+  resources :interest_borders
+  resources :comunes
 
-  resources :groups do
-    member do
-      get :ask_for_partecipation
-      get :ask_for_follow
-      get :partecipation_request_confirm
-      get :edit_events
-      get :new_event
-      post :create_event
-      get :edit_permissions
-      get :edit_proposals
-      post :change_default_anonima
-      post :change_default_visible_outside
-      post :change_advanced_options
-      post :change_default_secret_vote
-      get :reload_storage_size
-      put :enable_areas
-    end
+  get 'elfinder' => 'elfinder#elfinder'
+  post 'elfinder' => 'elfinder#elfinder'
 
+  devise_for :users, controllers: {omniauth_callbacks: "users/omniauth_callbacks", sessions: "sessions", registrations: "registrations", passwords: "passwords", confirmations: 'confirmations'} do
+    get '/users/sign_in', to: 'devise/sessions#new'
+    get '/users/sign_out', to: 'devise/sessions#destroy'
+    get '/users/auth/:provider' => 'users/omniauth_callbacks#passthru'
+  end
+
+
+  resources :users do
     collection do
-      post :ask_for_multiple_follow
+      get :confirm_credentials
+      get :alarm_preferences #preferenze allarmi utente
+      get :border_preferences #preferenze confini di interesse utente
+      post :set_interest_borders #cambia i confini di interesse
+      post :join_accounts
+      get :privacy_preferences
+      get :statistics
+      post :change_show_tooltips
+      post :change_show_urls
+      post :change_receive_messages
+      post :change_rotp_enabled
+      post :change_locale
+      post :change_time_zone
     end
 
+    member do
+      get :show_message
+      post :send_message
+    end
+
+    resources :authentications
+  end
+
+  resources :notifications do
+    collection do
+      post :change_notification_block
+      post :change_email_notification_block
+      post :change_email_block
+    end
+  end
+
+  concern :blog_posts do
+    resources :blog_posts do
+      get :drafts, on: :collection
+      resources :blog_comments
+    end
+  end
+
+  concerns :blog_posts
+
+  resources :blogs do
+    concerns :blog_posts
+    get '/:year/:month' => 'blogs#by_year_and_month', :as => :posts_by_year_and_month, on: :member
+  end
+
+
+  resources :tags
+
+  get '/tags/:text', to: 'tags#show'
+
+  get '/votation/', to: 'votations#show'
+  put '/votation/vote', to: 'votations#vote'
+  put '/votation/vote_schulze', to: 'votations#vote_schulze'
+  resources :votations
+
+  concern :eventable do
     resources :events do
-      resources :meeting_partecipations
+      resources :meeting_participations, only: [:create]
+
+      resources :event_comments do
+        member do
+          post :like
+        end
+      end
       member do
         post :move
         post :resize
@@ -173,19 +238,30 @@ DemocracyOnline3::Application.routes.draw do
         get :list
       end
     end
+  end
 
-    resources :elections
-
-    resources :candidates
-
-    resources :proposals do
+  concern :participation_roles do
+    resources :participation_roles do
       collection do
-        get :search
+        post :change_default_role
       end
       member do
-        post :close_debate
+        post :change_group_permission
       end
     end
+  end
+
+  concerns :eventable
+
+  #specific routes for subdomains
+  constraints Subdomain do
+    get '', to: 'groups#show'
+
+    get '/edit', to: 'groups#edit'
+    put '/update', to: 'groups#update'
+
+    resources :elections
+    resources :candidates
 
     resources :quorums do
       member do
@@ -193,44 +269,259 @@ DemocracyOnline3::Application.routes.draw do
       end
     end
 
+
+    resources :best_quorums, controller: 'quorums'
+    resources :old_quorums, controller: 'quorums'
+
     resources :documents do
-      collection do
-        get :view
-      end
+      get :view, on: :collection
     end
 
     resources :group_areas do
-      collection do
-        put :change
-        get :manage
-      end
-
       resources :area_roles do
+        member do
+          patch :change
+        end
         collection do
-          put :change
-          put :change_permissions
+          patch :change_permissions
         end
       end
     end
 
+    resources :group_participations do
+      collection do
+        post :send_email
+        post :destroy_all
+      end
+      member do
+        post :change_user_permission
+      end
+    end
+
+    concerns :participation_roles
+
+    resources :search_participants
+
+    resources :forums, controller: 'frm/forums', only: [:index, :show] do
+      resources :topics, controller: 'frm/topics' do
+        member do
+          get :subscribe
+          get :unsubscribe
+        end
+      end
+
+
+      resources :topics, controller: 'frm/topics', only: [:new, :create, :index, :show, :destroy] do
+        resources :posts, controller: 'frm/posts'
+      end
+
+
+    end
+
+    namespace :frm do
+      get 'forums/:forum_id/moderation', to: "moderation#index", as: :forum_moderator_tools
+      # For mass moderation of posts
+      put 'forums/:forum_id/moderate/posts', to: "moderation#posts", as: :forum_moderate_posts
+      # Moderation of a single topic
+      put 'forums/:forum_id/topics/:topic_id/moderate', to: "moderation#topic", as: :moderate_forum_topic
+      resources :categories, only: [:index, :show]
+      namespace :admin do
+        root to: "base#index"
+        resources :groups, as: 'frm_groups' do
+          resources :members do
+            collection do
+              post :add
+            end
+          end
+        end
+
+        resources :forums do
+          resources :moderators
+        end
+
+        resources :categories
+        resources :topics do
+          member do
+            put :toggle_hide
+            put :toggle_lock
+            put :toggle_pin
+          end
+        end
+      end
+    end
+
+    get '/:action', controller: 'groups'
+    put '/:action', controller: 'groups'
+    post '/:action', controller: 'groups'
+
   end
 
-  resources :documents do
-    collection do
-      get :view
-      get :download
-    end
-    member do
-    end
-  end
+  #routes available only on main site
+  constraints NoSubdomain do
 
-  resources :quorums do
-    collection do
-      get :help
-    end
-  end
+    root to: 'home#index'
 
-  resources :elections do
+    resources :certifications, only: [:index, :create, :destroy]
+    resources :user_sensitives do
+      member do
+        get :document
+      end
+    end
+
+    resources :proposal_categories do
+      get :index, scope: :collection
+    end
+
+    resources :groups do
+      member do
+        get :ask_for_participation
+        get :ask_for_follow
+        put :participation_request_confirm
+        put :participation_request_decline
+        post :create_event
+        post :change_default_anonima
+        post :change_default_visible_outside
+        post :change_advanced_options
+        post :change_default_secret_vote
+        get :reload_storage_size
+        put :enable_areas
+        put :remove_post
+        put :feature_post
+        get :permissions_list
+      end
+
+      collection do
+        post :ask_for_multiple_follow
+        get :autocomplete
+      end
+
+
+      resources :forums, controller: 'frm/forums', only: [:index, :show] do
+        resources :topics, controller: 'frm/topics' do
+          member do
+            get :subscribe
+            get :unsubscribe
+          end
+        end
+
+
+        resources :topics, controller: 'frm/topics', only: [:new, :create, :index, :show, :destroy] do
+          resources :posts, controller: 'frm/posts'
+        end
+
+
+      end
+
+      namespace :frm do
+        get 'forums/:forum_id/moderation', to: "moderation#index", as: :forum_moderator_tools
+        # For mass moderation of posts
+        put 'forums/:forum_id/moderate/posts', to: "moderation#posts", as: :forum_moderate_posts
+        # Moderation of a single topic
+        put 'forums/:forum_id/topics/:topic_id/moderate', to: "moderation#topic", as: :moderate_forum_topic
+        resources :categories, only: [:index, :show]
+        namespace :admin do
+          root to: "base#index"
+          resources :groups, as: 'frm_groups' do
+            resources :members do
+              collection do
+                post :add
+              end
+            end
+          end
+
+          resources :forums do
+            resources :moderators
+          end
+
+          resources :categories
+          resources :topics do
+            member do
+              put :toggle_hide
+              put :toggle_lock
+              put :toggle_pin
+            end
+          end
+        end
+      end
+
+      get 'users/autocomplete', to: "users#autocomplete", as: "user_autocomplete"
+
+      concerns :eventable
+
+      resources :elections
+
+      resources :candidates
+
+      resources :group_participations do
+        collection do
+          post :send_email
+          post :destroy_all
+        end
+        member do
+          post :change_user_permission
+        end
+      end
+
+      concerns :participation_roles
+
+      resources :search_participants
+
+      resources :proposals do
+        collection do
+          get :search
+        end
+        member do
+          post :close_debate
+          patch :regenerate
+          get :geocode
+          get :vote_results
+        end
+      end
+
+      resources :quorums do
+        member do
+          post :change_status
+        end
+      end
+
+
+      resources :best_quorums, controller: 'quorums'
+      resources :old_quorums, controller: 'quorums'
+
+      resources :documents do
+        collection do
+          get :view
+        end
+      end
+
+      resources :group_areas do
+        resources :area_roles do
+          member do
+            patch :change
+          end
+          collection do
+            put :change_permissions
+          end
+        end
+
+        resources :area_participations, only: [:create, :update, :destroy]
+      end
+
+      concerns :blog_posts
+
+      get '/:year/:month' => 'groups#by_year_and_month', :as => :posts_by_year_and_month, on: :member
+    end
+
+    resources :documents do
+      collection do
+        get :view
+        get :download
+      end
+      member do
+      end
+    end
+
+    resources :elections do
       member do
         get :vote_page
         post :vote
@@ -238,62 +529,38 @@ DemocracyOnline3::Application.routes.draw do
       end
     end
 
-  resources :partecipation_roles do
-    collection do
-      post :change_group_permission
-      post :change_user_permission
-      post :change_default_role
+    match ':controller/:action/:id', via: :all
+
+    match ':controller/:action/:id.:format', via: :all
+
+
+    admin_required = lambda do |request|
+      request.env['warden'].authenticate? and request.env['warden'].user.admin?
     end
+
+    moderator_required = lambda do |request|
+      request.env['warden'].authenticate? and request.env['warden'].user.moderator?
+    end
+
+    constraints moderator_required do
+      match ':controller/:action/', via: :all
+      get 'moderator_panel', to: 'moderator#show', as: 'moderator/panel'
+    end
+
+
+    constraints admin_required do
+      mount Sidekiq::Web => "/sidekiq"
+      mount Maktoub::Engine => "/maktoub/"
+      match ':controller/:action/', via: :all
+      resources :admin
+      get 'admin_panel', to: 'admin#show', as: 'admin/panel'
+    end
+
+
+    resources :tokens, only: [:create, :destroy]
+
+    get '/:id' => 'groups#show'
+
   end
-
-
-  match 'elfinder' => 'elfinder#elfinder'
-
-  match '/tags/:text', :to => 'tags#show', :as => 'tag'
-
-  match '/votation/', :to => 'votations#show'
-  match '/votation/vote', :to => 'votations#vote'
-  resources :votations
-
-  match ':controller/:action/:id'
-
-  match ':controller/:action/:id.:format'
-
-  match 'index_by_category', :to => 'proposals#index_by_category', :as => '/proposals/index_by_category'
-
-  match 'home', :to => 'home#show'
-
-  #url friendly 'proposte'
-  #match ':proposal_url/:id', :to => 'proposals#show'
-  #match ':proposal_url', :to => 'proposals#index'
-  #match ':proposal_url/cat/:category/', :to => 'proposals#index'
-
-  match '/partecipa' => 'home#engage'
-  match '/chisiamo' => 'home#whowe'
-  match '/roadmap' => 'home#roadmap'
-  match '/videoguide' => 'home#videoguide'
-  match '/edemocracy' => 'home#whatis'
-  match '/sostienici' => 'home#helpus'
-  match '/privacy' => 'home#privacy'
-  match '/terms' => 'home#terms'
-
-  admin_required = lambda do |request|
-    request.env['warden'].authenticate? and request.env['warden'].user.admin?
-  end
-
-  constraints admin_required do
-    mount Resque::Server, :at => "/resque_admin/"
-    mount Maktoub::Engine => "/maktoub/"
-    match ':controller/:action/'
-    resources :admin
-    match 'admin_panel', :to => 'admin#show', :as => 'admin/panel'
-  end
-
-
-  resources :tokens,:only => [:create, :destroy]
-
-  #authenticate :admin do
-  #  mount Resque::Server, :at => "/resque_admin"
-  #end
 
 end

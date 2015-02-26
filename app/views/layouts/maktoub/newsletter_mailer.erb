@@ -7,9 +7,6 @@
   <meta property="og:title" content="<%= @subject %>"/>
   <meta name="viewport" content="width=680px, initial-scale=0.5">
   <title><%= @subject %></title>
-  <style type="text/css">
-      <%= render 'layouts/maktoub/styles' %>
-  </style>
 </head>
 <body leftmargin="0" marginwidth="0" topmargin="0" marginheight="0" offset="0">
 <center>
@@ -47,7 +44,7 @@
 
                     <!-- // Begin Module: Standard Header Image \\ -->
                     <img style="max-width:80px;float:left" src="<%= Maktoub.home_url %>/assets/logo120.png">
-                    <%= link_to ("<h1 style='float:left;margin: 25px 10px 10px;text-decoration: none;'>"+Maktoub.app_name+"</h1>").html_safe, Maktoub.home_url, :target => "_blank" %>
+                    <%= link_to ("<h1 style='float:left;margin: 25px 10px 10px;text-decoration: none;'>"+Maktoub.app_name+"</h1>").html_safe, Maktoub.home_url, target: "_blank" %>
                     <!-- // End Module: Standard Header Image \\ -->
                     <div style="clear: both;"></div>
                     <hr/>
@@ -97,28 +94,31 @@
                               <div mc:edit="std_social">
                                 &nbsp;
                                 <% unless Maktoub.twitter_url.blank? %>
-                                    <%= link_to 'seguici su Twitter', Maktoub.twitter_url, :target => "_blank" %>
+                                    <%= link_to t('mailer.default.follow_twitter'), Maktoub.twitter_url, target: "_blank" %>
                                 <% end %>
                                 <% unless Maktoub.facebook_url.blank? %>
                                     |
-                                    <%= link_to 'seguici su Facebook', Maktoub.facebook_url, :target => "_blank" %>
+                                    <%= link_to t('mailer.default.follow_facebook'), Maktoub.facebook_url, target: "_blank" %>
                                 <% end %>
                                 <% unless Maktoub.google_plus_url.blank? %>
                                     |
-                                    <%= link_to 'seguici su Google+', Maktoub.google_plus_url, :target => "_blank" %>
+                                    <%= link_to t('mailer.default.follow_google'), Maktoub.google_plus_url, target: "_blank" %>
                                 <% end %>
                                 &nbsp;
                               </div>
                             </td>
                           </tr>
                       <% end %>
+                      <%@ruser = @resource || @user || @to || @alert.try(:user) || User.find(55)  %>
+                      <%@url = @ruser.original_locale.host %>
+                      <%@url += "?l=#{@ruser.original_locale.lang}" if @ruser.original_locale.lang%>
+
                       <tr>
                         <td valign="top" width="350">
                           <div mc:edit="std_footer">
                             <em>Copyright &copy; <%= Time.now.year %> <%= Maktoub.app_name %>.</em>
                             <br/>
-                            <em>Ricevi questa email in quanto sei registrato al
-                              sito <%= link_to Maktoub.home_url, Maktoub.home_url, :target => "_blank" %>.</em>
+                            <em><%=raw t('mailer.default.footer.registered_at', url: (link_to @url, @url, target: "_blank")) %></em>
                             <br/>
                             <%- unless @archive %>
                                 <%# we are not including mailing addresses %>
@@ -132,11 +132,7 @@
                       <tr>
                         <td colspan="2" valign="middle" id="utility">
                           <div>
-                            &nbsp;<%= link_to 'modifica preferenze newsletter e notifiche', Maktoub.subscription_preferences_url, :target => "_blank" %>&nbsp;
-                            <%- if Maktoub.unsubscribe_method %>
-                                | <%= link_to 'unsubscribe', edit_subscribers_url, :target => "_blank", :rel => "nofollow" %>
-
-                            <% end %>
+                            &nbsp;<%= link_to t('mailer.default.edit_preferences'), main_app.alarm_preferences_users_url(host: @ruser.original_locale.host, l: @ruser.original_locale.lang), target: "_blank" %>
                           </div>
                         </td>
                       </tr>
@@ -157,5 +153,3 @@
 </center>
 </body>
 </html>
-
-

@@ -1,38 +1,27 @@
-<table class="table_list">
-  <thead class="table_header">
-  <th>Ruolo</th>
-  <th>Descrizione</th>
-
-  <% GroupAction.for_group_areas.order(:seq).each do |action| %>
-      <th><%= action.description %></th>
-  <% end %>
-
-  </thead>
-  <tbody>
-
-  <% @group_area.area_roles.each do |role|
-    abilitations = role.area_action_abilitations.by_group_area(@group_area).all %>
-      <tr valign="top" style="border-bottom: 1px dotted grey; <%='background-color: #EAEBFF' if (role.id == @group_area.area_role_id)%>">
-        <td>
-          <%= role.name %>
-        </td>
-        <td> <%= role.description %>
-        </td>
-        <% GroupAction.for_group_areas.order(:seq).each do |action| %>
-            <td><input type="checkbox" onclick="return change_permission_block(this,<%=role.id%>,<%=action.id%>);"
-                       <% if (abilitations.find { |a| a.group_action_id == action.id }) %>
-                       checked="true"
-                       <% end %>
-                       /></td>
-        <% end %>
-
-        <td>
-          <% if role.id != @group_area.area_role_id %>
-              <%= link_to "X", group_group_area_area_role_path(@group,@group_area,role), :method => :delete, :remote => true, :confirm => "Sei sicuro di voler eliminare questo ruolo?" %>
+<dl id="roles_accordion" class="accordion" data-accordion>
+  <% @group_area.area_roles.each_with_index do |role, idx| %>
+      <dd>
+        <a href="#role_<%= role.id %>"><%= role.name %>
+          <% if role.id == @group_area.area_role_id %> (default)
           <% end %>
-          <%= link_to "Modifica", edit_group_group_area_area_role_path(@group,@group_area,role), :remote => true %>
-        </td>
-      </tr>
+        </a>
+
+        <div id="role_<%= role.id %>" class="content <%= 'active' if idx==0 %>">
+          <%= link_to [@group, @group_area, role], method: :delete, class: 'btn', style: 'float:right', data: {remote: true, confirm: t('pages.groups.edit_permissions.confirm_role_deletion'), disable_with: t('loading')} do %>
+              <i class="fa fa-trash-o"></i>
+              <%= t('buttons.delete') %>
+          <% end if can? :destroy, role %>
+
+          <%= link_to edit_group_group_area_area_role_url(@group, @group_area, role), class: 'btn', style: 'float:right', data: {remote: true, disable_with: t('loading')} do %>
+              <i class="fa fa-pencil"></i>
+              <%= t('buttons.edit') %>
+          <% end %>
+          <h4><%= role.description %></h4>
+          <% GroupAction.for_group_areas.order(:seq).each do |action| %>
+              <input type="checkbox" data-area-action-abilitation data-area_role_id=<%= role.id %>  data-action_id=<%= action.id %> <%= 'checked="true"' if role.area_actions.include? action %>/>
+              <span><%= action.description %></span> <br/>
+          <% end %>
+        </div>
+      </dd>
   <% end %>
-  </tbody>
-</table>
+</dl>

@@ -4,15 +4,11 @@ class ComunesController < ApplicationController
   before_filter :authenticate_user!
 
   def index
-   
-    @comunes = Comune.all(:conditions => "upper(description) like upper('#{params[:q]}%')", :limit => 10)
-   
-    comuni = @comunes.collect { |p| {:id => p.id.to_s, :name => p.description} }
-    map = comuni
+    @territory = SysLocale.find_by_key(I18n.locale).territory
+    @comunes = @territory.comunes.where(["lower_unaccent(description) like lower_unaccent(?)",params[:q].to_s + '%']).order('population desc nulls last').limit(10)
+    comuni = @comunes.collect { |p| {id: p.id.to_s, text: p.description} }
     respond_to do |format|
-      format.xml  { render :xml => map[0,10] }
-      format.json  { render :json =>  map[0,10]}
-      format.html # index.html.erb
+      format.json  { render json:  comuni[0,10]}
     end
   end
 end  

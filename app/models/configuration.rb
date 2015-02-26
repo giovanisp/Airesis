@@ -1,4 +1,9 @@
 class Configuration < ActiveRecord::Base
+
+
+  SOCIALNETWORK = 'socialnetwork_active'
+  RECAPTCHA = 'recaptcha'
+
   def self.phases_active
     @phases_active = !self.find_by_name('phases_active').value.to_i.zero?
   end
@@ -8,7 +13,7 @@ class Configuration < ActiveRecord::Base
   end
 
   def self.socialnetwork_active
-    @socialnetwork_active = !self.find_by_name('socialnetwork_active').value.to_i.zero?
+    @socialnetwork_active ||= !self.find_by_name(SOCIALNETWORK).value.to_i.zero?
   end
 
   def self.elections_active
@@ -45,5 +50,13 @@ class Configuration < ActiveRecord::Base
 
   def self.folksonomy
     @folksonomy = !self.find_by_name('folksonomy').value.to_i.zero?
+  end
+
+  def self.rotp
+    @rotp = !self.find_by_name('rotp').value.to_i.zero?
+  end
+
+  def self.recaptcha
+    @rotp = !self.find_by_name(RECAPTCHA).value.to_i.zero?
   end
 end

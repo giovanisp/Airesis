@@ -1,128 +1,118 @@
-<%if current_user %>
+<% @page_title = t('pages.users.left_panel.alarm_and_notifications') %>
+
 <script>
-    function change_notification_block(el){
-    	if (el.checked) {
-    		$.ajax({
-	        	data: "id="+el.value+"&block=false",
-	        	url: "/notifications/change_notification_block",     
-	            dataType: 'script',
-	        	type: 'post'    
-	        });
-            $('#block_email_'+el.value).removeAttr("disabled").removeAttr("title");
-    	}
-    	else {
-	        $.ajax({
-	        	data: "id="+el.value+"&block=true",
-	        	url: "/notifications/change_notification_block",     
-	            dataType: 'script',
-	        	type: 'post'    
-	        });
-
-            $('#block_email_'+el.value).attr("disabled", true).attr("title","Devi attivare la notifica per ricevere l'email");
-	       }
-    }
-
-    function change_email_notification_block(el){
+    function change_notification_block(el) {
+        var block_ = !el.checked;
+        $.ajax({
+            data: "id=" + el.value + "&block=" + block_ + "&l=<%=I18n.locale%>",
+            url: "/notifications/change_notification_block",
+            dataType: 'script',
+            type: 'post'
+        });
         if (el.checked) {
-            $.ajax({
-                data: "id="+el.value+"&block=false",
-                url: "/notifications/change_email_notification_block",
-                dataType: 'script',
-                type: 'post'
-            });
+            $('#block_email_' + el.value).removeAttr("disabled").removeAttr("title");
         }
         else {
-            $.ajax({
-                data: "id="+el.value+"&block=true",
-                url: "/notifications/change_email_notification_block",
-                dataType: 'script',
-                type: 'post'
-            });
+            $('#block_email_' + el.value).attr("disabled", true).attr("title", "Devi attivare la notifica per ricevere l'email");
         }
     }
 
-    function change_email_block(el){
-        if (el.checked) {
-            $.ajax({
-                data: "block=false",
-                url: "/notifications/change_email_block",
-                dataType: 'script',
-                type: 'post'
-            });
-            //$('.block_email').removeAttr("disabled").removeAttr("title");
-        }
-        else {
-            $.ajax({
-                data: "block=true",
-                url: "/notifications/change_email_block",
-                dataType: 'script',
-                type: 'post'
-            });
-            //$('.block_email').attr("disabled", true).attr("title","Attiva la ricezione delle email con la checkbox posta in alto nella pagina");
-        }
+    function change_email_notification_block(el) {
+        var block_ = !el.checked;
+        $.ajax({
+            data: "id=" + el.value + "&block=" + block_ + "&l=<%=I18n.locale%>",
+            url: "/notifications/change_email_notification_block",
+            dataType: 'script',
+            type: 'post'
+        });
     }
-    
+
+    function change_email_block(el) {
+        var block_ = !el.checked;
+        $.ajax({
+            data: "block=" + block_ + "&l=<%=I18n.locale%>",
+            url: "/notifications/change_email_block",
+            dataType: 'script',
+            type: 'post'
+        });
+    }
 </script>
-<%end %>
 
 
-<%=render :layout => "layouts/page_title", :locals => {:title => t('pages.user.notifications')} do%>
-<%end%>  
-<p>
-    <input type="checkbox"
-         <%if current_user.email_alerts?%>
-         checked="true"
-         <%end%>
-         onclick="return change_email_block(this);"/>
-    <b>Ricevi notifiche e newsletter su <%=current_user.email%></b>
+<%= render layout: "layouts/page_title", locals: {title: t('pages.user.notifications')} do %>
+<% end %>
 
-<%blocked = @current_user.blocked_notifications.all
-  blocked_emails = @current_user.blocked_email_notifications.all%>
+<% blocked = @current_user.blocked_notifications.all
+   blocked_emails = @current_user.blocked_email_notifications.all %>
 
-   	<table>
-   <% NotificationCategory.includes(:notification_types).where("id not in (2,5)").order(:id).each do |category|%>
-   		<tr><td>
-   		<h4><%=category.description%></h4>
-   		</td>
-   		<td>
-   		  Ricevi notifica
-   		</td>
-        <td>
-          Ricevi email
+<table>
+
+  <% NotificationCategory.includes(:notification_types).order(:seq).each do |category| %>
+      <thead>
+      <tr>
+        <td class="hide-for-small">
+          <%= image_tag "notification_categories/#{category.short.downcase}.png" %>
         </td>
-   		</tr>
-   		<% category.notification_types.each do |type|%>
-   		<tr>
-   			<td>
- 				<%=type.description%>
- 			</td>
- 			<td style="text-align: center">
- 				<input type="checkbox" value="<%=type.id%>" id="block_alert_<%=type.id%>"
- 				<%unless blocked.include? type%>
- 					checked="true" 
- 				<%end%>
- 				onclick="return change_notification_block(this);"/>
- 			</td>
+        <td>
+            <%= category.description %>
+        </td>
+        <td class="alerts">
+          <%= t('pages.users.alarm_preferences.alerts') %>
+        </td>
+        <td class="emails">
+          <%= t('pages.users.alarm_preferences.emails') %>
+        </td>
+      </tr>
+      </thead>
+      <% category.notification_types.where('id not in (8,15)').each do |type| %>
+          <tr>
+            <td class="hide-for-small"></td>
+            <td>
+              <%= type.description %>
+            </td>
             <td style="text-align: center">
-              <input type="checkbox" value="<%=type.id%>" id="block_email_<%=type.id%>" class="block_email"
-                     <%unless blocked_emails.include? type%>
+              <input type="checkbox" value="<%= type.id %>" id="block_alert_<%= type.id %>"
+                     <% unless blocked.include? type %>
                      checked="true"
-                     <%end%>
-                     <%if blocked.include? type%>
+                     class="block_alert"
+                     <% end %>
+                     onclick="return change_notification_block(this);"/>
+            </td>
+            <td style="text-align: center">
+              <input type="checkbox" value="<%= type.id %>" id="block_email_<%= type.id %>" class="block_email"
+                     <% unless blocked_emails.include? type %>
+                     checked="true"
+                     class="block_email"
+                     <% end %>
+                     <% if blocked.include? type %>
                      disabled="disabled"
-                     title="<%= "Devi attivare la notifica per ricevere l'email"%>"
-                     <%end%>
+                     title="<%= "Devi attivare la notifica per ricevere l'email" %>"
+                     <% end %>
                      onclick="return change_email_notification_block(this);"/>
             </td>
- 		</tr>
- 		<%end%>
-   <% end%>
- 	</table>
-</p>
+          </tr>
+      <% end %>
+  <% end %>
+  <tr>
+    <td class="hide-for-small">
+      <%= image_tag "newsletter.png" %>
+    </td>
+    <td>
+      <%= t('pages.users.alarm_preferences.receive_on_address', email: current_user.email) %>
+    </td>
+    <td></td>
+    <td style="text-align: center"><input type="checkbox"
+                                          <% if current_user.receive_newsletter? %>
+                                          checked="true"
+                                          <% end %>
+                                          onclick="return change_email_block(this);"/>
+    </td>
+  </tr>
+</table>
 
-<%content_for :left_panel do %>
-	<%if current_user %>
-	<%= render :partial => 'users/preferences_panel' %>
 
-	<%end%>
-<%end%>
+<% content_for :left_panel do %>
+    <% if current_user %>
+        <%= render partial: 'users/preferences_panel' %>
+    <% end %>
+<% end %>

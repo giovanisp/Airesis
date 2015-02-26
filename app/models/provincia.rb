@@ -1,6 +1,14 @@
 class Provincia < ActiveRecord::Base
-  set_table_name 'provincias'
-  belongs_to :regione, :class_name => 'Regione', :foreign_key => :regione_id
-  has_many :comunes, :class_name => 'Comune'
-  #has_many :provinciali_groups, :class_name => 'ProvincialiGroup'
+  self.table_name = 'provincias'
+
+  has_many :comunes
+  has_many :circoscriziones
+
+  belongs_to :regione
+  belongs_to :stato
+  belongs_to :continente
+  
+  def parent
+    self.regione
+  end
 end

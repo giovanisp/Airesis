@@ -1,42 +1,47 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-US">
-	<head>
-		<title><%= (@page_title || t('open_space')) + ' - ' + APP_SHORT_NAME%></title>
-		
-		<%=render :partial => "layouts/head" %>
-	</head>
-	<body>
-		
-	<%=render :partial => "layouts/header" %>		
-	<div id="subheader" class="ui-widget-header ui-state-default">
-		<div class="body_maxwidth">
-			<div class="header_image">
-		    	<%= image_tag 'logo120.png', :width => 120, :alt => APP_LONG_NAME %>
-		    </div>
-		    <div class="group_title">
-			<h1><%=t('open_space')%></h1>
-			<%= link_to t('pages.open_space.layout.proposals_button'), proposals_path, :class => 'ideaButton buttonStyle'%>
-			<%= link_to t('pages.open_space.layout.calendar_button'), events_path, :class => 'calendarButton buttonStyle' %>
-			<!--<%= link_to t('pages.open_space.layout.map_button'), proposals_path, :class => 'mapButton buttonStyle' %>-->
-			</div>
-		</div>
-			
-	</div>
-		
-		<!-- ##### Main Copy ##### -->
-		<div id="main-copy">
-			<div id="groups_leftpanel">
-				<%= yield :left_panel%>
-			</div>
-			<div id="centerpanelextended">
-				<div id="flash_messages" style="height:20px">
-					<%= render :partial => 'layouts/flash', :locals => {:flash => flash} %>
-				</div>
-				<%= yield :layout %>
-			</div>					
-			<div style="clear: both; height: 0; overflow: hidden;"></div>
-			<%=render :partial => "layouts/footer" %>
-		</div>
-		
-	</body>
-</html>
+<% content_for :menu do %>
+    <div class="topimage hide-for-small">
+      <%= image_tag 'single_small.png', width: 40, alt: ENV['APP_LONG_NAME'] %>
+    </div>
+    <div class="topmenu <%= 'noleft' unless content_for? :left_panel %>">
+      <span class="tit"><%= link_to "#{ENV['APP_SHORT_NAME']} - #{t('open_space')}", root_path %></span>
+
+      <div class="submenu">
+        <%= link_to(proposals_path, class: ((['proposals', 'proposal_revisions'].include? controller_name) ? 'sel' : '')) do %>
+            <span class="show-for-large-up"><%= t('pages.open_space.layout.proposals_button') %></span>
+
+            <div class="icon-file small hide-for-large-up" title="<%= t('pages.open_space.layout.proposals_button') %>"></div>
+        <% end %>
+        <!--<span> ⋅ </span>
+          <%= link_to(proposals_path, class: ((['proposals', 'proposal_revisions'].include? controller_name) ? 'sel' : '')) do %>
+              <span class="show-for-large-up"><%= t('pages.open_space.layout.petitions_button') %></span>
+
+              <div class="icon-pencil small hide-for-large-up" title="<%= t('pages.open_space.layout.petitions_button') %>"></div>
+          <% end %>-->
+        <span> ⋅ </span>
+        <%= link_to(blogs_path, class: ((['blogs','blog_posts'].include? controller_name) ? 'sel' : '')) do %>
+            <span class="show-for-large-up"><%= t('pages.open_space.layout.blogs_button') %></span>
+
+            <div class="icon-bubble small hide-for-large-up" title="<%= t('pages.open_space.layout.blogs_button') %>"></div>
+        <% end %>
+        <span> ⋅ </span>
+        <%= link_to(groups_path, class: ((['groups'].include? controller_name) ? 'sel' : '')) do %>
+            <span class="show-for-large-up"><%= t('pages.open_space.layout.groups_button') %></span>
+
+            <div class="icon-users small hide-for-large-up" title="<%= t('pages.open_space.layout.groups_button') %>"></div>
+        <% end %>
+        <span> ⋅ </span>
+        <%= link_to events_path, class: (controller_name == 'events' ? 'sel' : '') do %>
+            <span class="show-for-large-up"><%= t('pages.open_space.layout.calendar_button') %></span>
+
+            <div class="icon-calendar small hide-for-large-up" title="<%= t('pages.open_space.layout.calendar_button') %>"></div>
+        <% end %>
+        <span> ⋅ </span>
+        <%= link_to(tags_path, class: (controller_name == 'tags' ? 'sel' : '')) do %>
+            <span class="show-for-large-up"><%= t('pages.open_space.layout.tags_button') %></span>
+
+            <div class="icon-tags small hide-for-large-up" title="<%= t('pages.open_space.layout.tags_button') %>"></div>
+        <% end %>
+      </div>
+    </div>
+<% end %>
+<%= render 'layouts/general' %>

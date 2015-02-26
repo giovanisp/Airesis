@@ -1,128 +1,101 @@
 #encoding: utf-8
 class BlogsController < ApplicationController
-  # GET /blogs
-  # GET /blogs.xml
   layout :choose_layout
-  
-  before_filter :authenticate_user!, :only => [ :edit, :update, :destroy, :new, :create ]
-  before_filter :check_author, :only => [:edit, :update, :destroy]
-  
-  
-   def check_author
-    @blog = Blog.find(params[:id])
-    if !(current_user.is_my_blog? @blog.id) && !is_admin?
-      flash[:notice] = 'Non puoi modificare un blog che non ti appartiene.'
-      redirect_to :back
-    end
-   end
-  
-  def index
-    @page_title = "Elenco blog"
-    @blogs = Blog.all
 
+  load_and_authorize_resource
+
+  before_filter :load_blog_data, only: [:show, :edit, :by_year_and_month]
+
+  def index
+    @tags = Tag.most_blogs.shuffle unless request.xhr?
+    @page_title = t('pages.blogs.show.title')
+    @blogs = Blog.look(params)
     respond_to do |format|
-      format.html # index.html.erb
-      format.xml  { render :xml => @blogs }
+      format.js
+      format.html
     end
   end
-  
-  # GET /blogs/1
-  # GET /blogs/1.xml
+
   def show
-    @blog = Blog.find(params[:id])
-    @user = @blog.user
     @page_title = @blog.title
-    @blog_posts = @blog.posts.published.includes(:user,:blog,:tags).paginate(:page => params[:page], :per_page => COMMENTS_PER_PAGE, :order => 'published_at DESC')
+    @blog_posts = @blog_posts.published.page(params[:page]).per(COMMENTS_PER_PAGE)
+    respond_to do |format|
+      format.js
+      format.html
+      format.atom
+      format.json
+    end
+  end
+
+  def by_year_and_month
+    @page_title = t('pages.blog_posts.archives.title', year: params[:year], month: t('date.month_names')[params[:month].to_i])
+    @blog_posts = @blog_posts.published.where("extract(year from created_at) = ? AND extract(month from created_at) = ? ", params[:year], params[:month]).order("created_at DESC").page(params[:page]).per(COMMENTS_PER_PAGE)
 
     respond_to do |format|
       format.js
-      format.html # show.html.erb
-      #format.xml  { render :xml => @blog }
+      format.html
     end
   end
 
-  # GET /blogs/new
-  # GET /blogs/new.xml
   def new
     if current_user.blog
-      flash[:error] = "Spiacente. Disponi già di un blog."
+      flash[:error] = t('error.blog.already_have')
       redirect_to root_path
     else
       @user = current_user
-      @blog = Blog.new
+      @blog.user = current_user
 
       respond_to do |format|
         format.html # new.html.erb
-        format.xml  { render :xml => @blog }
       end
     end
   end
 
-  # GET /blogs/1/edit
   def edit
-    @blog = Blog.find(params[:id])
     @user = @blog.user
   end
 
-  # POST /blogs
-  # POST /blogs.xml
   def create
-    
-    params[:blog][:user_id] = current_user.id
-    @blog = Blog.new(params[:blog])
-
-    respond_to do |format|
-      if @blog.save
-        flash[:notice] = 'Hai creato il tuo blog!.'
-        format.html {
-          if session[:blog_return_to]
-            redirect_to session[:blog_return_to]
-          else
-            redirect_to(@blog) 
-          end
-        }
-        #format.xml  { render :xml => @blog, :status => :created, :location => @blog }
+    @blog.user = current_user
+    if @blog.save
+      flash[:notice] = t('info.blog.blog_created')
+      if session[:blog_return_to]
+        redirect_to session[:blog_return_to]
       else
-        format.html { render :action => "new" }
-        #format.xml  { render :xml => @blog.errors, :status => :unprocessable_entity }
+        redirect_to @blog
       end
+    else
+      @user = current_user
+      render action: "new"
     end
   end
 
-  # PUT /blogs/1
-  # PUT /blogs/1.xml
   def update
-    @blog = Blog.find(params[:id])
-
-    respond_to do |format|
-      if @blog.update_attributes(params[:blog])
-        flash[:notice] = 'Il titolo del Blog è stato aggiornato correttamente'
-        format.html { redirect_to(@blog) }
-        format.xml  { head :ok }
-      else
-        format.html { render :action => "edit" }
-        format.xml  { render :xml => @blog.errors, :status => :unprocessable_entity }
-      end
+    if @blog.update_attributes(blog_params)
+      flash[:notice] = t('info.blog.title_updated')
+      redirect_to @blog
+    else
+      render action: "edit"
     end
   end
 
-  # DELETE /blogs/1
-  # DELETE /blogs/1.xml
   def destroy
-    @blog = Blog.find(params[:id])
+    @blog = Blog.friendly.find(params[:id])
     @blog.destroy
+    redirect_to blogs_url
+  end
 
-    respond_to do |format|
-      format.html { redirect_to(blogs_url) }
-      format.xml  { head :ok }
-    end
-  end
-  
   protected
-  
-  def choose_layout
-    params[:action] == 'index' ? 'settings' : 'users'
+
+  def blog_params
+    params.require(:blog).permit(:title)
   end
-  
-  
+
+  def load_blog
+    @blog = Blog.friendly.find(params[:id])
+  end
+
+  def choose_layout
+    params[:action] == 'index' ? 'open_space' : 'users'
+  end
 end

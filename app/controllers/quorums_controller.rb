@@ -1,87 +1,64 @@
 #encoding: utf-8
 class QuorumsController < ApplicationController
-  include NotificationHelper
-
-  #load group
-  before_filter :load_group, :except => :help
-  before_filter :load_quorum, :only => [:edit, :update, :destroy]
+  layout :choose_layout
 
   #security controls
   before_filter :authenticate_user!
 
-  before_filter :check_permissions, :only => [:new,:create,:edit,:update,:destroy,:change_status]
+  before_filter :load_group, except: :help
 
+  authorize_resource :group
+
+  load_and_authorize_resource class: 'BestQuorum', through: :group, shallow: true, parent: false, singleton: true, except: [:index]
+
+  def index
+    authorize! :index, BestQuorum
+  end
 
   def new
-    @quorum = Quorum.new
-    @partecipants_count = @group.count_voter_partecipants #_partecipants.count
+    @page_title= t('pages.groups.edit_quorums.new_quorum.title')
+    @quorum.attributes = {percentage: 0, good_score: 20, vote_percentage: 0, vote_good_score: 50}
+    @group_participations_count = @group.scoped_participants(GroupAction::PROPOSAL_PARTICIPATION).count
+    @vote_participants_count = @group.scoped_participants(GroupAction::PROPOSAL_VOTE).count
     respond_to do |format|
       format.js
+      format.html
     end
   end
 
   def create
-    begin
-      Quorum.transaction do
-        @quorum = @group.quorums.build(params[:quorum])
-        @quorum.public = false
-        @group.save!
-      end
-
+    @quorum.public = false
+    if @quorum.save
       respond_to do |format|
-        flash[:notice] = 'Quorum creato correttamente'
-        format.js { render :update do |page|
-          page.replace_html "flash_messages", :partial => 'layouts/flash', :locals => {:flash => flash}
-          page.replace_html "quorum_panel_container", :partial => 'groups/quorums_panel'
-          page.call "hideNewQuorumPanel"
-          page.call "generateTable"
-        end
-        }
+        flash[:notice] = t('info.quorums.quorum_created')
+        format.js
       end
-
-    rescue Exception => e
+    else
       respond_to do |format|
-        flash[:error] = 'Errore nella creazione del quorum.'
-        format.js { render :update do |page|
-          page.replace_html "flash_messages", :partial => 'layouts/flash', :locals => {:flash => flash}
-          page.alert @quorum.errors.full_messages.join(";") if (@quorum && @quorum.errors)
-        end
-        }
-        #format.html { redirect_to edit_permissions_group_path(@quorum) }
+        flash[:error] = t('error.quorums.quorum_creation')
+        format.js { render 'layouts/active_record_error', locals: {object: @quorum} }
       end
     end
   end
 
   def edit
-    @partecipants_count = @group.count_voter_partecipants
+    @page_title = t('pages.groups.edit_quorums.edit_quorum')
+    @group_participations_count = @group.scoped_participants(GroupAction::PROPOSAL_PARTICIPATION).count
+    @vote_participants_count = @group.scoped_participants(GroupAction::PROPOSAL_VOTE).count
   end
 
 
   def update
-    Quorum.transaction do
-      @quorum.attributes = params[:quorum]
-      @quorum.save!
-    end
-
-    respond_to do |format|
-      flash[:notice] = 'Quorum aggiornato correttamente'
-      format.js { render :update do |page|
-        page.replace_html "flash_messages", :partial => 'layouts/flash', :locals => {:flash => flash}
-        page.replace_html "quorum_panel_container", :partial => 'groups/quorums_panel'
-        page.call "hideEditQuorumPanel"
-        page.call "generateTable"
+    if @quorum.update(best_quorum_params)
+      respond_to do |format|
+        flash[:notice] = t('info.quorums.quorum_updated')
+        format.js
       end
-      }
-    end
-
-  rescue Exception => e
-    respond_to do |format|
-      flash[:error] = "Errore nell'aggiornanto del quorum."
-      format.js { render :update do |page|
-        page.replace_html "flash_messages", :partial => 'layouts/flash', :locals => {:flash => flash}
-        page.alert @quorum.errors.full_messages.join(";") if (@quorum && @quorum.errors)
+    else
+      respond_to do |format|
+        flash[:error] = t('error.quorums.quorum_modification')
+        format.js { render 'layouts/active_record_error', locals: {object: @quorum} }
       end
-      }
     end
   end
 
@@ -89,12 +66,12 @@ class QuorumsController < ApplicationController
   def destroy
     @quorum = @group.quorums.find_by_id(params[:id])
     @quorum.destroy
-    flash[:notice] = 'Quorum eliminato correttamente'
+    flash[:notice] = t('info.quorums.quorum_deleted')
 
     respond_to do |format|
       format.js { render :update do |page|
-        page.replace_html "flash_messages", :partial => 'layouts/flash', :locals => {:flash => flash}
-        page.replace_html "quorum_panel_container", :partial => 'groups/quorums_panel'
+        page.replace_html "flash_messages", partial: 'layouts/flash', locals: {flash: flash}
+        page.replace_html "quorum_panel_container", partial: 'groups/quorums_panel'
       end
       }
     end
@@ -106,20 +83,17 @@ class QuorumsController < ApplicationController
       if quorum
         if params[:active] == "true" #devo togliere i permessi
           quorum.active = true
-          flash[:notice] ="Quorum attivato."
+          flash[:notice] =t('info.quorums.quorum_activated')
         else #lo disattivo
           quorum.active = false
-          flash[:notice] ="Quorum disattivato."
+          flash[:notice] =t('info.quorums.quorum_deactivated')
         end
         quorum.save!
       end
     end
 
     respond_to do |format|
-      format.js { render :update do |page|
-        page.replace_html "flash_messages", :partial => 'layouts/flash', :locals => {:flash => flash}
-      end
-      }
+      format.js { render 'layouts/success' }
     end
   end
 
@@ -137,26 +111,27 @@ class QuorumsController < ApplicationController
     end
   end
 
-
-  private
-  def check_permissions
-    return  if @group.portavoce.include? current_user
-    flash[:error] = t(:permissions_required)
-    respond_to do |format|
-      format.js { render :update do |page|
-        page.replace_html "flash_messages", :partial => 'layouts/flash', :locals => {:flash => flash}
-      end }
+  #retrieve a list of votation dates compatibles with that quorum
+  def dates
+    starttime = Time.now + @quorum.minutes.minutes + DEBATE_VOTE_DIFFERENCE
+    if @group
+      @dates = @group.events.private.vote_period(starttime).collect { |p| ["da #{l p.starttime} a #{l p.endtime}", p.id, {'data-start' => (l p.starttime), 'data-end' => (l p.endtime), 'data-title' => p.title}] } #TODO:I18n
+    else
+      @dates = Event.public.vote_period(starttime).collect { |p| ["da #{l p.starttime} a #{l p.endtime}", p.id] } #TODO:I18n
     end
   end
 
   protected
 
-  def load_group
-    @group = Group.find(params[:group_id])
+  def best_quorum_params
+    quorum_params
   end
 
-  def load_quorum
-    @quorum = Quorum.find(params[:id])
+  def quorum_params
+    params.require(:best_quorum).permit(:id, :name, :description, :percentage, :valutations, :days_m, :hours_m, :minutes_m, :minutes, :good_score, :vote_percentage, :vote_good_score)
   end
 
+  def choose_layout
+    @group ? 'groups' : 'open_space'
+  end
 end

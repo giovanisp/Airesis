@@ -1,205 +1,233 @@
 <script>
-    //style="background-color: rgb(185, 255, 116);"
-    function hideRankPanel(rank_p) {
-        query = '#' + rank_p + ' > .voteup'
-        $(query).hide();
-
-        query = '#' + rank_p + ' > .votedown'
-        $(query).hide();
-
-        query = '#' + rank_p + ' > .loadingup'
-        $(query).show();
-
-        query = '#' + rank_p + ' > .loading'
-        $(query).show();
-
-        query = '#' + rank_p + ' > .loadingdown'
-        $(query).show();
-
-        query = '#' + rank_p + ' > .voteup-mini'
-        $(query).hide();
-
-        query = '#' + rank_p + ' > .votenil-mini'
-        $(query).hide();
-
-        query = '#' + rank_p + ' > .votedown-mini'
-        $(query).hide();
-
-
-    }
-    var pageURL = "<%= proposal_path(proposal) %>";	//need this for ajaxify pagination
-
+    var pageURL = "<%= proposal_path(@proposal) %>";	//need this for ajaxify pagination
 
     $(function () {
-        $('img.mceItem').each(function () {
-            var src = $(this).attr('alt');
-            var width = $(this).attr('width') || 640
-            var height = $(this).attr('height') || 390
-            $(this).after($('<iframe src=\"http://www.youtube.com/embed/' + src + '\" width=\"' + width + '\" height=\"' + height + '\" frameborder=\"0\" seamless allowfullscreens/>'));
+        $('img.cke_iframe').each(function () {
+            var realelement = $(this).data('cke-realelement');
+            $(this).after($(unescape(realelement)));
             $(this).remove();
         });
-
-
-        var select = $(".slideNumber");
-        var slider = $("<div class='slider'></div>").insertAfter(select).slider({
-            min: 1,
-            max: <%=@proposal.solutions.count%>+1,
-            range: "min",
-            slide: function (event, ui) {
-                console.log("sliding")
-                $(this).prev()[0].selectedIndex = ui.value - 1;
-            }
-        });
-
-        $(".slideNumber").change(function () {
-            console.log('change');
-            $(this).next().slider("value", this.selectedIndex + 1);
-        });
     });
-
-    var vote = [];
-    var votestring = "";
-
-    function elaboraVoto() {
-        votestring = "";
-        vote = [];
-        $('.candidate_panel').each(function (panel) {
-            var val = $('.slideNumber', this).val();
-            if (!val || val == '') val = "0";
-            vote.push([$('.candidate_id', this).val(), val])
-        })
-        vote.sort(function (a, b) {
-            return parseInt(b[1]) - parseInt(a[1]);
-        })
-        for (v in vote) {
-            if (v != 0) {
-                if (vote[v][1] == vote[v - 1][1]) {
-                    votestring += ","
-                }
-                else {
-                    votestring += ";"
-                }
-
-            }
-            votestring += vote[v][0]
-        }
-
-        $('#data_votes').val(array2dToJson(vote, 'candidates', ' '));
-        $('#data_string').val(votestring);
-        console.log('data_string: ' + votestring);
-        console.log('data_votes: ' + array2dToJson(vote, 'candidates', ' '));
-        return false;
-    }
-
 </script>
+<% if current_user %>
+    <% @unread = @proposal.contributes.listable.unread(current_user.id, @proposal.id) %>
+    <% if false && @unread.count > 0 #TODO           %>
+        <%= link_to '#', class: 'read_contributes' do %>
+            <div class="icon-bell medium"></div>
+        <% end %>
 
-<div style="float: right;  height:30px;">
+        <script type="text/javascript">
+            var unread = <%=raw @unread.joins({paragraph: :section}).select('proposal_comments.id, paragraphs.id as paragraph_id, sections.id as section').to_json%>;
+            $('.read_contributes').css('top', '90px').css('right', '20px');
+            $('.read_contributes').click(function () {
+                var obj_ = unread.pop();
+                $('.contribute-button[data-section_id=' + obj_.section + ']').trigger('click', obj_.id);
+                if (unread.length == 0) {
+                    $(this).remove();
+                }
+                return false;
+            });
+        </script>
+    <% end %>
+<% end %>
 
-  <% if ::Configuration.socialnetwork_active %>
-      <a href="https://twitter.com/share"
-         class="twitter-share-button"
-         data-lang="en"
-         data-text="Guarda questa proposta su <%= APP_SHORT_NAME %>: <%= @group ? group_proposal_url(@group, @proposal) : proposal_url(@proposal) %>">Tweet</a>
-      <g:plusone size="medium"></g:plusone>
-      <%= raw facebook_like %>
+<h1 class="proposalTitle">
+  <%= image_tag("proposal_types/#{@proposal.proposal_type.name.downcase}_ico.png", align: 'middle', alt: @proposal.proposal_type.description, title: @proposal.proposal_type.description, style: "width:40px;padding-right:2px;") %>
+  <span itemprop="name"><%= h @proposal.title %></span>
+</h1>
+
+<div style="text-align: right;float:right;">
+  <% if @proposal.contributes.count>1 %>
+      <% @removable_count = @proposal.contributes.unintegrated.removable.count %>
+      <% @removed_count = @proposal.contributes.noise.count %>
+      <% if ((is_proprietary? @proposal) || is_admin?) && (@removable_count + @removed_count > 0) %>
+          <%= link_to t('pages.proposals.show.manage_noise_folder', removable: @removable_count, removed: @removed_count), manage_noise_proposal_proposal_comments_url(@proposal), remote: true, class: 'btn' %>
+      <% else %>
+          <% if @proposal.contributes.noise.count > 0 %>
+              <%= link_to t('pages.proposals.show.noise_folder'), noise_proposal_proposal_comments_url(@proposal), remote: true, class: 'btn' %>
+          <% end %>
+      <% end %>
+
+  <% end %>
+  <% if can? :update, @proposal %>
+      <% if @group %>
+          <%= link_to edit_group_proposal_url(@group, @proposal), class: 'btn' do %>
+              <i class="fa fa-pencil"></i>
+              <%= t('pages.proposals.show.edit_button') %>
+          <% end if can? :update, @proposal %>
+          <%= link_to group_proposal_url(@group, @proposal), method: :delete, data: {confirm: t('pages.proposals.show.delete_proposal_confirmation')}, class: 'btn' do %>
+              <i class="fa fa-trash-o"></i>
+              <%= t('pages.proposals.show.delete_button') %>
+          <% end if can? :destroy, @proposal %>
+      <% else %>
+          <%= link_to edit_proposal_path(@proposal), class: 'btn' do %>
+              <i class="fa fa-pencil"></i>
+              <%= t('pages.proposals.show.edit_button') %>
+          <% end if can? :update, @proposal %>
+          <%= link_to @proposal, method: :delete, data: {confirm: t('pages.proposals.show.delete_proposal_confirmation')}, class: 'btn' do %>
+              <i class="fa fa-trash-o"></i>
+              <%= t('pages.proposals.show.delete_button') %>
+          <% end if can? :destroy, @proposal %>
+      <% end %>
   <% end %>
 
+  <% if @proposal.in_valutation? %>
+      <%= link_to @group ? close_debate_group_proposal_url(@group, @proposal) : close_debate_proposal_url(@proposal), method: :post, data: {confirm: t('pages.proposals.show.close_debate_proposal_confirmation')}, class: 'btn' do %>
+          <i class="fa fa-close"></i>
+          <%= t('pages.proposals.show.close_debate_button') %>
+      <% end  if can? :close_debate, @proposal %>
+  <% elsif @proposal.waiting_date? #se bisogna scegliere una data mostra la combobox       %>
+      <div id="wait_date_header_container">
+        <%= render partial: 'proposals/wait_date_header' %>
+      </div>
 
-</div>
-<h2 class="proposalTitle" itemprop="name"><%= h proposal.title %></h2>
 
-<h3 class="proposalSubtitle" itemprop="description"><%= h proposal.subtitle %></h3>
-
-
-<div style="float:right;">
-
-  <% if (is_proprietary? proposal) || is_admin? %><!--se sono autorizzato a modificare la proposta-->
-      <% if @group %>
-          <%= link_to t('pages.proposals.show.edit_button'), edit_group_proposal_path(@group, proposal), :class => 'editButton' if can? :update, proposal %>
-      <% else %>
-          <%= link_to t('pages.proposals.show.edit_button'), edit_proposal_path(proposal), :class => 'editButton' if can? :update, proposal %>
+  <% elsif @proposal.voting? %>
+      <% unless @proposal.is_petition? %>
+          <b><%= raw 'Questa proposta è in votazione. Leggi le soluzioni proposte e <a href="#" onclick="scroll_to_vote_panel();return false;">vota qui</a>.' %></b> <!--TODO:I18n -->
       <% end %>
-      <% if @group %>
-          <%= link_to t('pages.proposals.show.delete_button'), [@group, proposal], method: :delete, confirm: t('pages.proposals.show.delete_proposal_confirmation'), class: 'trashButton' if can? :destroy, proposal %>
-      <% else %>
-          <%= link_to t('pages.proposals.show.delete_button'), proposal, method: :delete, confirm: t('pages.proposals.show.delete_proposal_confirmation'), class: 'trashButton' if can? :destroy, proposal %>
-      <% end %>
-      <% if proposal.in_valutation? %>
-          <%= link_to t('pages.proposals.show.close_debate_button'), @group? close_debate_group_proposal_path(@group,proposal) : close_debate_proposal_path(proposal), method: :post, confirm: t('pages.proposals.show.close_debate_proposal_confirmation'), class: 'closeButton' if can? :close_debate, proposal %>
-      <% elsif proposal.waiting_date? #se bisogna scegliere una data mostra la combobox  %>
-          <div id="wait_date_header_container">
-            <%= render :partial => 'proposals/wait_date_header' %>
-          </div>
-
-          <div id="create_event_dialog" style="display:none;">
-            <div id="create_event">
-            </div>
-          </div>
-      <% end %>
+  <% elsif @proposal.abandoned? %>
+      <%= render partial: 'proposals/abandoned_header' %>
+  <% elsif @proposal.voted? %>
+      <div class="card hide-for-medium-up">
+        <h2 id="status"><%= @proposal.in_valutation? ? t('pages.proposals.show.during_debate') : @proposal.state.description %></h2>
+        <!--todo wrong url-->
+        <%= link_to vote_results_proposal_url(@proposal), remote: true, class: 'btn disable results-button' do %>
+            <%= t('pages.proposals.show.votation_results') %>
+        <% end %>
+      </div>
   <% end %>
 </div>
+
+<div id="create_event_dialog" class="reveal-modal medium" data-reveal>
+</div>
+
 <div style="clear: both;"></div>
 
 
-<div class="blogCommentPostedAt">
+<% unless can? :participate, @proposal %>
+    <% if @proposal.in_valutation? %>
+        <div data-alert class="alert-box info radius">
+          <% if signed_in? %>
+              <% if @group.participants.include? current_user %>
+                  <%= t('pages.proposals.show.cant_participate.no_permissions') %>
+                  <%= link_to show_message_user_path(@group.portavoce.first), remote: true do %>
+                      <%= t('pages.proposals.show.cant_participate.ask_permissions') %>
+                  <% end if can? :send_message, @group.portavoce.first %>
+              <% else %>
+                  <% if @group.requesting.include? current_user %>
+                      <%= t('pages.proposals.show.cant_participate.request_pending') %>
+                      <%= link_to show_message_user_path(@group.portavoce.first), remote: true do %>
+                          <%= t('pages.proposals.show.cant_participate.send_message') %>
+                      <% end if can? :send_message, @group.portavoce.first %>
+                  <% else %>
+                      <%= t('pages.proposals.show.cant_participate.not_a_member') %>
+                      <%= link_to ask_for_participation_group_path(@group), class: "btn blue" do %>
+                          <i class="fa fa-pencil"></i>
+                          <%= t('pages.groups.show.ask_participate_button') %>
+                      <% end %>
+                  <% end %>
+              <% end %>
+          <% else %>
+              <%= t('pages.proposals.show.cant_participate.not_logged_in') %>
+              <%= link_to t('pages.header.login').capitalize, '#', data: {login: ''} %>
+              .
+          <% end %>
+          <a href="#" class="close">&times;</a>
+        </div>
+    <% end %>
+<% end %>
 
-  <% if proposal.proposal_state_id == ProposalState::WAIT #in attesa di essere votata  %>
-      <p>
-        <b>
-          <%= t('pages.proposals.show.votation_message', from: proposal.vote_period.starttime.strftime("%d/%m/%Y %H:%M"), to: proposal.vote_period.endtime.strftime("%d/%m/%Y %H:%M")) %>
-        </b>
-      </p>
-  <% elsif proposal.proposal_state_id == ProposalState::VALUTATION #in dibattito  %>
-      <%= t('pages.proposals.show.editing_message_1') %>
-      <a class="spch-bub-inside" href="#proposalComments"><span class="point"></span><em><%= proposal.comments.count %></em></a>.
-      <br/> <%= t('pages.proposals.show.editing_message_2') %>
-      <span class="video_faq" id="suffgrad"><%= t('pages.proposals.show.editing_message_3') %></span>.
-  <% elsif proposal.proposal_state_id == ProposalState::VOTING #in votazione  %>
-      <p>
-        <%= link_to t('pages.proposals.show.votation_page_button'), votation_path %>
-      </p>
-  <% end %>
-  <br/>
-</div>
+<% unless @proposal.is_petition? %>
+    <% if @proposal.waiting? #waiting for the vote period                 %>
+        <div class="status_description card">
+          <b><%= t('pages.proposals.show.votation_message', from: l(@proposal.vote_period.starttime), to: l(@proposal.vote_period.endtime)) %></b>
+        </div>
+    <% elsif @proposal.in_valutation? %>
+        <div class="status_description card">
+          <%= @proposal.quorum.explanation %>
+        </div>
+    <% elsif @proposal.abandoned? %>
+        <div class="status_description card">
+          <%= "Abandoned #{time_ago_in_words(@proposal.updated_at)}: <b>#{l @proposal.updated_at}</b>".html_safe %>
+        </div>
+    <% end %>
+<% end %>
 
-<% @proposal.sections.each do |section| %>
-    <h3><%= section.title %></h3>
-    <div class="proposalMainContainer proposal_main shadow-box">
+
+<% @proposal.sections.includes(:paragraphs).each do |section| %>
+    <div class="proposal_main card">
+      <h3>
+        <div class="tit1">
+          <div class="tit2">
+            <%= section.title %>
+          </div>
+          <% unless @proposal.voting? %>
+              <% contributes_num = section.proposal_comments.listable.count %>
+              <% unread = current_user ? section.proposal_comments.listable.unread(current_user.id, @proposal.id).count : contributes_num %>
+              <div class="suggest">
+                <a href="#" class="btn green contribute-button contribute-section-button" data-status="0" data-section_id="<%= section.id %>" data-contributes_num="<%= contributes_num %>" data-unread_contributes_num="<%= unread %>" title="<%= (can? :participate, @proposal) ? t('pages.proposals.show.give_contribute') : t('pages.proposals.show.read_contribute') %>">
+                  <i class="fa fa-pencil"></i>
+                  <span class="contribute-button-text show-for-medium-up"><%= (can? :participate, @proposal) ? t('pages.proposals.show.give_contribute') : t('pages.proposals.show.read_contribute') %></span>
+                  <span class="contribute-button-num"><%= "(#{unread}/#{contributes_num})" %></span>
+                </a>
+
+                <div class="suggest_l" style="display: none;">
+                  <%= image_tag 'suggest.png', class: 'tria' %>
+                </div>
+              </div>
+          <% end %>
+        </div>
+      </h3>
+
       <div class="proposal_content">
-        <%= sanitize(section.paragraphs.first.content) %>
+        <%= parsed_section(section) %>
       </div>
     </div>
 <% end %>
 
-<% @proposal.solutions.each do |solution| %>
-    <% solution.sections.each do |section| %>
-        <div class="solution_title">
-          <h3><%= section.title %></h3>
-          <% if @proposal.is_polling? && @proposal.voting? %>
-              <select class="slideNumber">
-                <option selected="selected"></option>
-                <% @proposal.solutions.count.times do |c| %>
-                    <option><%= c+1 %></option>
-                <% end %>
-              </select>
-          <% end %>
-        </div>
-        <div id="proposal<%= proposal.id %>" class="proposalMainContainer proposal_main shadow-box">
-          <div class="proposal_content">
-            <%= sanitize(section.paragraphs.first.content) %>
+<% @proposal.solutions.includes(sections: :paragraphs).order('sections.seq').each_with_index do |solution, i| %>
+    <div class="solution_main card" data-solution_id="<%= solution.id %>">
+      <h3>
+        <div class="tit1 sol">
+          <div class="tit2">
+            <%= raw t("pages.proposals.edit.new_solution_title.#{@proposal.proposal_type.name.downcase}", num: i+1) %> <%= "#{solution.title}" %>
           </div>
         </div>
-    <% end %>
+      </h3>
+      <div class="sol_content">
+        <% solution.sections.each do |section| %>
+            <div class="proposal_main">
+              <h3>
+                <div class="tit1">
+                  <div class="tit2">
+                    <%= section.title %>
+                  </div>
+                  <% unless @proposal.voting? %>
+                      <% contributes_num = section.proposal_comments.listable.count %>
+                      <% unread = current_user ? section.proposal_comments.listable.unread(current_user.id, @proposal.id).count : contributes_num %>
+                      <div class="suggest">
+                        <a href="#" class="btn green contribute-button contribute-section-button" data-status="0" data-section_id="<%= section.id %>" data-contributes_num="<%= contributes_num %>" data-unread_contributes_num="<%= unread %>" title="<%= (can? :participate, @proposal) ? t('pages.proposals.show.give_contribute') : t('pages.proposals.show.read_contribute') %>">
+                          <i class="fa fa-pencil"></i>
+                          <span class="contribute-button-text show-for-medium-up"><%= (can? :participate, @proposal) ? t('pages.proposals.show.give_contribute') : t('pages.proposals.show.read_contribute') %></span>
+                          <span class="contribute-button-num"><%= "(#{unread}/#{contributes_num})" %></span>
+                        </a>
+                        <%= image_tag 'suggest.png', class: 'tria', style: 'display:none' %>
+                      </div>
+                  <% end %>
+                </div>
+              </h3>
+
+              <div class="proposal_content" data-id="<%= solution.id %>">
+                <%= parsed_section(section) %>
+              </div>
+            </div>
+        <% end %>
+      </div>
+    </div>
+
 <% end %>
 
-<% if @proposal.is_polling? && @proposal.voting? %>
-    <%= form_for 'data', :url => {:action => "vote", :controller => "votations"} do |f| %>
-        <%= f.hidden_field 'votes' %>
-        <%= f.hidden_field 'string' %>
-
-        <%= f.submit t('pages.proposals.show.vote_button'), :onclick => "return elaboraVoto();", :id => 'submit', :class => 'buttonStyle' %>
-    <% end %>
-<% end %>
-
-<div id="proposal_histories_container">
+<div id="vote_panel_container">
+  <%= render partial: 'vote_panel' %>
 </div>

@@ -1,15 +1,12 @@
-<div class="text">
-<b>Il tuo primo contributo<br /></b>
-E' ora di dire la tua! <br />
-Inserisci una proposta, un'idea o una segnalazione dal territorio. <br /> 
-Contribuisci alla discussione e fatti conoscere dagli altri utenti per aumentare il tuo ranking.
-<div style="margin:auto; text-align: center;">
-
-  <%= link_to 'Inserisci una proposta', new_proposal_path(:back => 'home', proposal_type_id: ProposalType::STANDARD), :remote => true, :class=> "buttonStyle disableButton" %>
-  <div id="create_proposal_container" style="display:none;">
-  </div>
-
-</div>
-</div> 
-<%= link_to 'Prosegui', complete_tutorial_step_path(@step.tutorial,@step), :class => 'buttonStyle littleText', :style => "float:right;" %>
+<h2><%= t('pages.steps.first_proposal.title_html') %></h2>
+<p>
+  <%= t('pages.steps.first_proposal.description_html', proposal: (link_to t('open_space'), proposals_path, target: :_blank)) %>
+</p>
+<p>
+  <%= render 'proposals/new_proposal' %>
+</p>
+<%= link_to complete_tutorial_step_path(@step.tutorial, @step), class: 'btn blue', style: "float:right;" do %>
+    <i class="fa fa-arrow-right"></i>
+    <%= t('buttons.next') %>
+<% end %>
 <div style="clear: both"></div>
