@@ -2,15 +2,8 @@ module Frm
   class TopicsController < Frm::ApplicationController
     helper 'frm/posts'
 
-    before_filter :load_group
-
-    authorize_resource :group
-
-    before_filter :load_forum
-    authorize_resource :forum, through: :group
+    load_and_authorize_resource :forum, class: 'Frm::Forum', through: :group
     load_and_authorize_resource through: :forum
-
-    before_filter :block_spammers, only: [:new, :create]
 
     def show
       if find_topic
@@ -59,8 +52,9 @@ module Frm
     end
 
     protected
+
     def create_successful
-      redirect_to group_forum_topic_url(@group, @forum, @topic), notice: t("frm.topic.created")
+      redirect_to group_forum_topic_url(@group, @forum, @topic), notice: t('frm.topic.created')
     end
 
     def create_unsuccessful
@@ -69,83 +63,69 @@ module Frm
     end
 
     def destroy_successful
-      flash[:notice] = t("frm.topic.deleted")
+      flash[:notice] = t('frm.topic.deleted')
 
       redirect_to group_forum_url(@group, @topic.forum)
     end
 
     def destroy_unsuccessful
-      flash.alert = t("frm.topic.cannot_delete")
+      flash.alert = t('frm.topic.cannot_delete')
 
       redirect_to group_forum_url(@group, @topic.forum)
     end
 
     def subscribe_successful
-      flash[:notice] = t("frm.topic.subscribed")
+      flash[:notice] = t('frm.topic.subscribed')
       respond_to do |format|
-        format.html {
+        format.html do
           redirect_to group_forum_topic_url(@group, @topic.forum, @topic)
-        }
-        format.js {
+        end
+        format.js do
           render 'subscribe'
-        }
+        end
       end
-
     end
 
     def unsubscribe_successful
-      flash[:notice] = t("frm.topic.unsubscribed")
+      flash[:notice] = t('frm.topic.unsubscribed')
       respond_to do |format|
-        format.html {
+        format.html do
           redirect_to group_forum_topic_url(@group, @topic.forum, @topic)
-        }
-        format.js {
+        end
+        format.js do
           render 'subscribe'
-        }
+        end
       end
     end
 
-
     protected
-
 
     def load_forum
       @forum = @group.forums.friendly.find(params[:forum_id])
     end
 
     def topic_params
-      params.require(:frm_topic).permit(:subject, :tags_list, posts_attributes: [:text] )
+      params.require(:frm_topic).permit(:subject, :tags_list, posts_attributes: [:text])
     end
-
 
     def find_posts(topic)
       posts = topic.posts
       unless forem_admin_or_moderator?(topic.forum)
         posts = posts.approved_or_pending_review_for(current_user)
       end
-      @posts = posts
+      @posts = posts.includes(:user, :reply_to, :topic)
     end
 
     def find_topic
-      begin
-        @topic = forum_topics(@forum, current_user).friendly.find(params[:id])
-        authorize! :read, @topic
-      rescue ActiveRecord::RecordNotFound
-        flash.alert = t("frm.topic.not_found")
-        redirect_to group_forum_url(@group, @forum) and return
-      end
+      @topic = forum_topics(@forum, current_user).friendly.find(params[:id])
+      authorize! :read, @topic
+    rescue ActiveRecord::RecordNotFound
+      flash.alert = t('frm.topic.not_found')
+      redirect_to(group_forum_url(@group, @forum)) && return
     end
 
     def register_view(topic, user)
       topic.register_view_by(user)
-    end
-
-    def block_spammers
-      if current_user.forem_spammer?
-        flash[:alert] = t('frm.general.flagged_for_spam') + ' ' +
-            t('frm.general.cannot_create_topic')
-        redirect_to :back
-      end
     end
 
     def forum_topics(forum, user)

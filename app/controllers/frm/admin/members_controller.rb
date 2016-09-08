@@ -8,9 +8,9 @@ module Frm
           group.members << user
         end
         respond_to do |format|
-          format.html {
-            redirect_to group_frm_admin_frm_group_url(@group, group)
-          }
+          format.html do
+            redirect_to group_frm_admin_mod_url(@group, group)
+          end
           format.js
         end
       end
@@ -18,7 +18,7 @@ module Frm
       private
 
       def group
-        @frm_group ||= Frm::Group.find(params[:frm_group_id])
+        @frm_mod ||= Frm::Mod.find(params[:mod_id])
       end
     end
   end

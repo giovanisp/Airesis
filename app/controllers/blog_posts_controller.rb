@@ -1,8 +1,4 @@
-#encoding: utf-8
 class BlogPostsController < ApplicationController
-
-  helper :blog
-
   layout :choose_layout
 
   before_filter :load_group
@@ -26,10 +22,10 @@ class BlogPostsController < ApplicationController
       redirect_to (@blog || @group)
     else
       @blog_posts = @blog_posts.published.order(published_at: :desc).page(params[:page]).per(COMMENTS_PER_PAGE)
-      @page_title = t('pages.blog_posts.index.title')
+      @page_title = t('pages.blog_posts.index.title', app_short_name: APP_SHORT_NAME)
       respond_to do |format|
-        format.js
         format.html
+        format.js
       end
     end
   end
@@ -51,8 +47,8 @@ class BlogPostsController < ApplicationController
     @blog_comment = @blog_post.blog_comments.new
     @blog_comments = @blog_post.blog_comments.includes(user: [:user_type, :image]).order('created_at DESC').page(params[:page]).per(COMMENTS_PER_PAGE)
     respond_to do |format|
-      format.js
       format.html
+      format.js
     end
   end
 
@@ -71,9 +67,9 @@ class BlogPostsController < ApplicationController
     respond_to do |format|
       if @blog_post.save
         flash[:notice] = t('info.blog_created')
-        format.html {
+        format.html do
           redirect_to @group ? group_url(@group) : @blog
-        }
+        end
       else
         @user = @blog.user
         format.html { render action: :new }
@@ -83,7 +79,7 @@ class BlogPostsController < ApplicationController
 
   def update
     @blog_post = @blog.blog_posts.find(params[:id])
-    if @blog_post.update_attributes(blog_post_params)
+    if @blog_post.update(blog_post_params)
       flash[:notice] = t('info.blog_post_updated')
       redirect_to [@blog, @blog_post]
     else
@@ -111,19 +107,18 @@ class BlogPostsController < ApplicationController
 
   def blog_post_params
     ret = params.require(:blog_post).permit(:title, :body, :status, :tags_list, group_ids: [])
-    group_ids = ret[:group_ids]
-    group_ids.select! { |id| (id != '') && (can? :post_to, Group.find(id)) } if group_ids
+    ret[:group_ids].select! { |id| (id != '') && (can? :post_to, Group.find(id)) } if ret[:group_ids]
     ret
   end
 
   private
 
-  def render_404(exception=nil)
+  def render_404(exception = nil)
     log_error(exception) if exception
     respond_to do |format|
       @title = t('error.error_404.blog_posts.title')
       @message = t('error.error_404.blog_posts.description')
-      format.html { render "errors/404", status: 404, layout: true }
+      format.html { render 'errors/404', status: 404, layout: true }
     end
     true
   end

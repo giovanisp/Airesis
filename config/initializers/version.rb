@@ -1,1 +1,2 @@
-VERSION = '4.0.17'
+# defined in raven.rb
+

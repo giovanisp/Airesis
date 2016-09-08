@@ -1,20 +1,17 @@
+<% @page_title = @user.fullname %>
 <% content_for :html_options do %>
     itemscope itemtype="http://data-vocabulary.org/Person"
 <% end %>
 
 <% content_for :head do %>
     <meta itemprop="name" content="<%= @user.fullname %>"/>
-    <meta itemprop="nickname" content="<%= @user.login %>"/>
+    <meta itemprop="nickname" content="<%= @user.fullname %>"/>
     <meta itemprop="url" content="<%= "#{request.protocol}#{request.host_with_port}#{request.fullpath}" %>"/>
 <% end %>
-
-
-<% @page_title = @user.fullname %>
 
 <div id="user_profile_container">
   <%= render partial: 'user_profile' %>
 </div>
-
 
 <% if @user == current_user && @user.group_participations.count > 0 %>
     <div class="card">
@@ -39,7 +36,19 @@
                     <span class="show-for-medium-up"><%= participation.group.name %></span>
                 <% end %>
               </td>
-              <td><span id="participation_<%= participation.id %>"><%= participation.participation_role.name %></span>
+              <td>
+                <span>
+                <%= participation.participation_role.name %>
+                  <i class="fa fa-info-circle" id="participation_<%= participation.id %>" data-participation-tooltip></i>
+                  <span style="display: none;" data-participation-tooltip-text>
+                    <strong><%= t('pages.users.show.what_can_i_do') %></strong>
+                    <ul>
+                      <li>
+                        <%= raw participation.participation_role.group_actions.order(:seq).map { |a| a.description }.join('</li><li>') %>
+                      </li>
+                    </ul>
+                  </span>
+                    </span>
               </td>
               <td class="show-for-medium-up"><%= participation.created_at if participation.created_at %></td>
               <td><%= participation.created_at.to_i if participation.created_at %></td>
@@ -48,21 +57,16 @@
         <% end %>
         </tbody>
       </table>
-      <script>
-          <%@group_participations.each do |participation| %>
-          $('#participation_<%=participation.id%>').qtip({content: "<strong><%=t('pages.users.show.what_can_i_do')%></strong><ul><li><%=raw participation.participation_role.group_actions.order(:seq).map{|a| a.description}.join('</li><li>')%></li></ul><br/>"});
-          <%end%>
-      </script>
+
     </div>
 <% end %>
 
 <% if current_user == @user %>
     <div id="name_modal" class="reveal-modal medium" data-reveal>
-      <%= form_for @user, remote: true do |f| %>
+      <%= simple_form_for @user, remote: true do |f| %>
           <div class="row">
             <div class="columns large-6">
-              <h2><%= t('pages.users.show.name_label') %></h2>
-              <%= f.text_field :name, size: 20 %>
+              <%= f.input :name, size: 20, required: true %>
               <input type="button" value="<%= t('buttons.cancel') %>" onclick="$('#name_modal').foundation('reveal','close');" class="btn"/>
               <%= f.submit t('buttons.save'), class: 'btn blue' %>
             </div>
@@ -71,10 +75,8 @@
       <a class="close-reveal-modal">&#215;</a>
     </div>
     <div id="surname_modal" class="reveal-modal medium" data-reveal>
-      <%= form_for @user, remote: true do |f| %>
-          <h2><%= t('pages.users.show.surname_label') %></h2>
-
-          <%= f.text_field :surname, size: 20 %>
+      <%= simple_form_for @user, remote: true do |f| %>
+          <%= f.input :surname, size: 20, required: true %>
           <input type="button" value="<%= t('buttons.cancel') %>" onclick="$('#surname_modal').foundation('reveal','close');" class="btn"/>
           <%= f.submit t('buttons.save'), class: 'btn blue' %>
       <% end %>
@@ -82,11 +84,15 @@
     </div>
 
     <div id="password_modal" class="reveal-modal medium" data-reveal>
-      <%= form_for @user, remote: true do |f| %>
-          <h2><%= t('pages.users.show.password_label') %></h2>
-
-          <%= f.text_field :password, type: :password, size: 20, style: "margin-bottom:5px;", placeholder: 'Nuova password' %>
-          <%= f.text_field :password_confirmation, type: :password, size: 20, placeholder: 'Conferma nuova password' %>
+      <%= simple_form_for @user, remote: true do |f| %>
+          <%= f.input :password, required: true, type: :password,
+                      label: t('pages.password.edit.new_password'), size: 20 %>
+          <%= f.input :password_confirmation,
+                      required: true,
+                      type: :password,
+                      size: 20,
+                      label: t('pages.registration.confirm_password'),
+                      input_html: { data: {fv_identical_field: 'user[password]', fv_identical: true}} %>
           <input type="button" value="<%= t('buttons.cancel') %>" onclick="$('#password_modal').foundation('reveal','close');" class="btn"/>
           <%= f.submit t('buttons.save'), class: 'btn blue' %>
       <% end %>
@@ -94,31 +100,14 @@
     </div>
 
     <div id="email_modal" class="reveal-modal medium" data-reveal>
-      <%= form_for @user, remote: true do |f| %>
-          <h2><%= t('pages.users.show.email_label') %></h2>
-
-          <%= f.text_field :email, size: 25 %>
+      <%= simple_form_for @user, remote: true do |f| %>
+          <%= f.input :email, label: t('pages.users.show.email_label'), size: 25, required: true %>
           <input type="button" value="<%= t('buttons.cancel') %>" onclick="$('#email_modal').foundation('reveal','close');" class="btn"/>
           <%= f.submit t('buttons.save'), class: 'btn blue' %>
       <% end %>
       <a class="close-reveal-modal">&#215;</a>
     </div>
 <% end %>
-
-<script type="text/javascript">
-    <%if current_user == @user%>
-    $('#participation_table').dataTable({
-        "bPaginate": false,
-        "bFilter": false,
-        "bSearchable": false,
-        "bInfo": false,
-        "aaSorting": [
-            [2, 'desc']
-        ],
-        "aoColumns": [null, null, {"iDataSort": 3}, {"bVisible": false}, null]
-    });
-    <%end%>
-</script>
 
 <% content_for :left_panel do %>
     <% if current_user == @user %>

@@ -3,25 +3,25 @@
     }
 });
 
-var $viewport;
 
 function switchText(button) {
-    var other_ = button.data('other');
-    var text_ = button.text();
-    button.data('other', text_);
-    button.text(other_);
+    button.each(function () {
+        var other_ = $(this).data('other');
+        var text_ = $(this).text();
+        $(this).data('other', text_);
+        $(this).text(other_);
+    });
 }
 
-
-function scrollToElement(element) {
-    $viewport.animate({
+function scrollToElement(element, callback) {
+    Airesis.viewport.animate({
         scrollTop: element.offset().top - 160
-    }, 2000);
+    }, 2000, 'swing', callback);
 
     // Stop the animation if the user scrolls. Defaults on .stop() should be fine
-    $viewport.bind("scroll mousedown DOMMouseScroll mousewheel keyup", function (e) {
+    Airesis.viewport.bind("scroll mousedown DOMMouseScroll mousewheel keyup", function (e) {
         if (e.which > 0 || e.type === "mousedown" || e.type === "mousewheel") {
-            $viewport.stop().unbind('scroll mousedown DOMMouseScroll mousewheel keyup'); // This identifies the scroll as a user action, stops the animation, then unbinds the event straight after (optional)
+            Airesis.viewport.stop().unbind('scroll mousedown DOMMouseScroll mousewheel keyup'); // This identifies the scroll as a user action, stops the animation, then unbinds the event straight after (optional)
         }
     });
     return false;
@@ -133,34 +133,6 @@ function disegnaProgressBar() {
                 fixed: true,
                 delay: 500
             }
-        });
-    });
-
-
-    $('.proposal_bottom .participants').each(function () {
-        $(this).qtip({
-            content: $('.authors', this),
-            position: {
-                at: 'bottom center',
-                my: 'top center'
-            },
-            style: {
-                classes: 'qtip-light qtip-shadow',
-                tip: {
-                    corner: true,
-                    width: 5,
-                    height: 5
-                }
-            }
-        });
-    });
-
-    $(function () {
-        $(".progress_bar").progressBar({
-            boxImage: '<%=asset_path "progressbar.gif"%>',
-            barImage: '<%=asset_path "progressbg_green.gif"%>',
-            showText: true,
-            textFormat: 'custom'
         });
     });
 }
@@ -341,15 +313,16 @@ function start_end_fdatetimepicker(start, end, min_minutes, suggested_minutes) {
 
     start.fdatetimepicker()
         .on('hide', function (event) {
-            var settings = window.ClientSideValidations.forms[event.currentTarget.form.id];
-            $(event.currentTarget).isValid(settings.validators);
-            var eventStartTime_ = $(event.currentTarget).fdatetimepicker('getDate');
+            $field = $(event.currentTarget);
+            var fv = $field.parent('form').data('formValidation');
+            $field.parent('form').formValidation('revalidateField', $field.attr('id'));
+            var eventStartTime_ = $field.fdatetimepicker('getDate');
             var minStartTime = addMinutes(eventStartTime_, min_minutes);
             var eventEndTime_ = end.fdatetimepicker("getDate");
             end.fdatetimepicker("setStartDate", minStartTime);
             if (eventEndTime_ < minStartTime) {
                 end.fdatetimepicker("setDate", addMinutes(eventStartTime_, suggested_minutes));
-                showOnField(end, 'Changed!');
+                showOnField(end, Airesis.i18n.datepicker.changed);
             }
 
         });
@@ -358,41 +331,22 @@ function start_end_fdatetimepicker(start, end, min_minutes, suggested_minutes) {
     var minTime_ = start.fdatetimepicker('getDate');
     end.fdatetimepicker({startDate: minTime_})
         .on('hide', function (event) {
-            var settings = window.ClientSideValidations.forms[event.currentTarget.form.id];
-            $(event.currentTarget).isValid(settings.validators);
+            $field = $(event.currentTarget);
+            var fv = $field.parent('form').data('formValidation');
+            $field.parent('form').formValidation('revalidateField', $field.attr('id'));
         });
 }
 
+function fdatetimepicker_only_date(start, end) {
+    start.fdatetimepicker('pickOnlyDate');
+    start.fdatetimepicker('setBeginOfDay');
+    end.fdatetimepicker('pickOnlyDate');
+    end.fdatetimepicker('setEndOfDay');
+}
 
-function select2town(element) {
-    element.select2({
-        cacheDataSource: [],
-        placeholder: Airesis.i18n.type_for_town,
-        query: function (query) {
-            self = this;
-            var key = query.term;
-            var cachedData = self.cacheDataSource[key];
-
-            if (cachedData) {
-                query.callback({results: cachedData});
-                return;
-            } else {
-                $.ajax({
-                    url: '/comunes',
-                    data: {q: query.term},
-                    dataType: 'json',
-                    type: 'GET',
-                    success: function (data) {
-                        self.cacheDataSource[key] = data;
-                        query.callback({results: data});
-                    }
-                })
-            }
-        },
-        escapeMarkup: function (m) {
-            return m;
-        }
-    });
+function fdatetimepicker_date_and_time(start, end) {
+    start.fdatetimepicker('pickDateAndTime');
+    end.fdatetimepicker('pickDateAndTime');
 }
 
 function disegnaCountdown() {
@@ -401,7 +355,7 @@ function disegnaCountdown() {
             since: new Date($(this).data('time')),
             significant: 1,
             format: 'ms',
-            layout: Airesis.i18n.countdown
+            layout: Airesis.i18n.countdown.layout1
         }, $.countdown.regionalOptions[Airesis.i18n.locale]));
     })
 }
@@ -522,7 +476,7 @@ function read_notifica(el) {
     }
 
     $.ajax({
-        dataType: 'js',
+        dataType: 'script',
         type: 'get',
         url: url_
     });
@@ -530,10 +484,10 @@ function read_notifica(el) {
 
 function sign_all_as_read(id) {
     $.ajax({
-        data: 'id=' + id,
         url: '/alerts/check_all/',
         type: 'post',
-        dataType: 'js',
+        dataType: 'script',
+        data: {id: id},
         complete: function (data) {
             reset_alerts_number();
             $('.card.mess').each(function () {
@@ -564,8 +518,11 @@ function poll() {
             n_container.empty();
             var read_container = $('<div class="read_all">');
             read_container.append($('<a href="#" onclick="sign_all_as_read(' + data.id + ');return false;">' + Airesis.i18n.alerts_sign_has_read + '</a>'));
-            read_container.append(' · ')
-            read_container.append($('<a href="/users/alarm_preferences">' + Airesis.i18n.alarm_settings + '</a>'));
+            read_container.append(' · ');
+            var url = '/users/alarm_preferences';
+            if (Airesis.i18n.l !== '')
+                url += '?l='+Airesis.i18n.l;
+            read_container.append($('<a href="'+url+'">' + Airesis.i18n.alarm_settings + '</a>'));
             var sub_container = $('<div class="cont1">');
             n_container.append(read_container).append(sub_container);
             for (var j = 0; j < data.alerts.length; j++) {
@@ -600,11 +557,7 @@ function poll() {
 
             $('.cont1')
                 .bind('mousewheel DOMMouseScroll', function (e) {
-                    console.log('scroll');
-                    if (e.originalEvent) e = e.originalEvent;
-                    var delta = e.wheelDelta || -e.detail;
-                    this.scrollTop += ( delta < 0 ? 1 : -1 ) * 30;
-                    e.preventDefault();
+                    Airesis.scrollLock(this, e);
                 });
             disegnaCountdown();
 
@@ -713,13 +666,11 @@ function fitRightMenu(fetched) {
     fetched.css('display', '');
 
     if (matchMedia(Foundation.media_queries['medium']).matches) {
-        console.log('set height');
         fetched.height($(window).height() - 110);
     }
 
     $(window).resize(function () {
         if (matchMedia(Foundation.media_queries['medium']).matches) {
-            console.log('set height');
             fetched.height($(window).height() - 110);
         }
     });
@@ -739,6 +690,12 @@ function formatQuorum(state) {
     return "<div> <div class=\"quorum_title\">" + state.text + "</div> <div class=\"quorum_desc\">" + $(element_).data('description') + "</div></div>";
 }
 
+function formatQuorumSelection(state) {
+    var element_ = state.element;
+    if (!state.id) return state.text; // optgroup
+    return "<div><div class=\"quorum_title\">" + state.text + "</div></div>";
+}
+
 //custom formatter for vote period in select2 dropdown
 function formatPeriod(state) {
     var element_ = state.element;
@@ -752,7 +709,7 @@ function initTextAreaTag() {
         $(this).textntags({
             triggers: {'@': {uniqueTags: false}},
             onDataRequest: function (mode, query, triggerChar, callback) {
-                var data = nicknames;
+                var data = ProposalsShow.nicknames;
 
                 query = query.toLowerCase();
                 var found = _.filter(data, function (item) {
@@ -767,7 +724,6 @@ function initTextAreaTag() {
 }
 
 function airesis_close_reveal() {
-    "use strict";
     $('.reveal-modal:visible').foundation('reveal', 'close');
 }
 
@@ -775,7 +731,7 @@ function airesis_reveal(element_, remove_on_close) {
     remove_on_close = typeof remove_on_close !== 'undefined' ? remove_on_close : true;
     element_.foundation().foundation('reveal', 'open');
     if (remove_on_close) {
-        $(document).on('closed', element_, function () {
+        $(document).on('closed.fndtn.reveal', element_, function () {
             element_.remove();
         });
     }
@@ -799,7 +755,9 @@ function search_stuff() {
         if (query != null && query != "") {
             $.ajax({
                 url: '/searches',
-                data: 'search[q]=' + query,
+                data: {
+                    'search[q]': query
+                },
                 method: 'POST'
             });
         }
@@ -919,42 +877,11 @@ function showOnField(field, text) {
     }, 10000)
 }
 
-function showVoteResults() {
-    "use strict";
-    $('#votes_table').dataTable({
-        "oLanguage": {
-            "sLengthMenu": "Mostra _MENU_ utenti per pagina",
-            "sSearch": "Cerca:",
-            "sZeroRecords": "Nessun utente, spiacente..",
-            "sInfo": "Sto mostrando da _START_ a _END_ di _TOTAL_ utenti",
-            "sInfoEmpty": "Sto mostrando 0 utenti",
-            "sInfoFiltered": "(filtrati da un totale di _MAX_ utenti)",
-            "oPaginate": {
-                "sPrevious": "Pagina precedente",
-                "sNext": "Pagina successiva"
-            }
-        }
-        //"aoColumns": [null,{ "bSortable": false }]
-    });
+function close_all_dropdown() {
+    $('.f-dropdown').foundation('dropdown', 'close', $('.f-dropdown'));
+}
 
-    $('#votes_table_wrapper label').css("font-weight", "normal").css("font-size", "12px");
-
-    $('#cast_table').dataTable({
-        "oLanguage": {
-            "sLengthMenu": "Mostra _MENU_ voti per pagina",
-            "sSearch": "Cerca:",
-            "sZeroRecords": "Nessun voto, spiacente..",
-            "sInfo": "Sto mostrando da _START_ a _END_ di _TOTAL_ voti",
-            "sInfoEmpty": "Sto mostrando 0 voti",
-            "sInfoFiltered": "(filtrati da un totale di _MAX_ voti)",
-            "oPaginate": {
-                "sPrevious": "Pagina precedente",
-                "sNext": "Pagina successiva"
-            }
-        },
-        "bFilter": false
-        //"aoColumns": [null,{ "bSortable": false }]
-    });
-
-    $('#cast_table_wrapper label').css("font-weight", "normal").css("font-size", "12px");
+function execute_page_js(page) {
+    if ("object" === typeof window[page])
+        window[page].init();
 }

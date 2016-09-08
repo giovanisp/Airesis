@@ -1,5 +1,4 @@
 class SearchParticipantsController < ApplicationController
-
   before_filter :load_group
 
   authorize_resource :group
@@ -10,8 +9,8 @@ class SearchParticipantsController < ApplicationController
     @group_participations = @unscoped_group_participations.page(params[:page]).per(GroupParticipation::PER_PAGE)
     flash[:notice] = t('info.groups.search_participants')
     respond_to do |format|
-      format.js
       format.html
+      format.js
     end
   end
 
@@ -20,5 +19,4 @@ class SearchParticipantsController < ApplicationController
   def search_participant_params
     params.require(:search_participant).permit(:keywords, :role_id, :status_id)
   end
-
 end

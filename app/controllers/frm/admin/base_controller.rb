@@ -1,16 +1,11 @@
 module Frm
   module Admin
     class BaseController < ApplicationController
-
       layout 'groups'
 
       before_filter :authorize_frm_admin
-      #before_filter :load_group
-
-
 
       def index
-
       end
 
       protected

@@ -1,73 +1,87 @@
-#encoding: utf-8
 class ResqueMailer < ActionMailer::Base
-  helper ProposalsHelper, EmailHelper, GroupsHelper
+  helper ProposalsHelper, EmailHelper, GroupsHelper, UsersHelper
   default from: ENV['DEFAULT_FROM']
 
-  layout :choose_layout
+  layout 'newsletters/default'
 
-  #specific templates for notification types
+  def url_options
+    options = {}
+    if @user
+      options.merge!(host: @user.locale.host, protocol: DEFAULT_EMAIL_PROTOCOL)
+      options.merge!(subdomain: @user.subdomain) if @user.subdomain
+      options.merge!(l: @user.locale.lang) unless @user.locale.lang.blank?
+    end
+    options
+  end
+
+  # don't send emails to user without an email address
+  def mail(headers = {}, &block)
+    super if headers[:to].present?
+  end
+  # specific templates for notification types
   TEMPLATES = {
-      NotificationType::NEW_CONTRIBUTES => 'new_contribute',
-      NotificationType::NEW_CONTRIBUTES_MINE => 'new_contribute',
-      NotificationType::NEW_COMMENTS_MINE => 'new_contribute',
-      NotificationType::NEW_COMMENTS => 'new_contribute',
-      NotificationType::TEXT_UPDATE => 'text_update',
-      NotificationType::NEW_PUBLIC_PROPOSALS => 'new_proposal',
-      NotificationType::NEW_PROPOSALS => 'new_proposal',
-      NotificationType::NEW_PUBLIC_EVENTS => 'notifications/new_event',
-      NotificationType::NEW_EVENTS => 'notifications/new_event',
-      NotificationType::AVAILABLE_AUTHOR => 'notifications/available_author',
-      NotificationType::UNINTEGRATED_CONTRIBUTE => 'unintegrated_contribute',
-      NotificationType::NEW_BLOG_COMMENT => 'new_blog_comment',
-      NotificationType::CONTRIBUTE_UPDATE => 'notifications/update_contribute'
+    NotificationType::NEW_CONTRIBUTES => 'notifications/new_contribute',
+    NotificationType::NEW_CONTRIBUTES_MINE => 'notifications/new_contribute',
+    NotificationType::NEW_COMMENTS_MINE => 'notifications/new_contribute',
+    NotificationType::NEW_COMMENTS => 'notifications/new_contribute',
+    NotificationType::TEXT_UPDATE => 'notifications/text_update',
+    NotificationType::NEW_PUBLIC_PROPOSALS => 'notifications/new_proposal',
+    NotificationType::NEW_PROPOSALS => 'notifications/new_proposal',
+    NotificationType::NEW_PUBLIC_EVENTS => 'notifications/new_event',
+    NotificationType::NEW_EVENTS => 'notifications/new_event',
+    NotificationType::AVAILABLE_AUTHOR => 'notifications/available_author',
+    NotificationType::UNINTEGRATED_CONTRIBUTE => 'notifications/unintegrated_contribute',
+    NotificationType::NEW_BLOG_COMMENT => 'notifications/new_blog_comment',
+    NotificationType::CONTRIBUTE_UPDATE => 'notifications/update_contribute',
+    NotificationType.find_by(name: NotificationType::NEW_FORUM_TOPIC).id => 'notifications/new_forum_topic'
   }
 
   def notification(alert_id)
     @alert = Alert.find(alert_id)
-    return if @alert.checked #do not send emails for already checked alerts
-    I18n.locale = @alert.user.locale.key || 'en'
-    @data = @alert.notification.data
+    @user = @alert.user
+    return if @alert.checked # do not send emails for already checked alerts
+    I18n.locale = @user.locale.key || :'en-EU'
+    @data = @alert.data
     to_id = @data[:to_id]
     subject_id = @data[:subject]
     subject = @alert.email_subject
     template_name = TEMPLATES[@alert.notification.notification_type_id] || 'notification'
     if to_id
-      mail(to: "discussion+#{to_id}@airesis.it", bcc: @alert.user.email, subject: subject, template_name: template_name)  #todo extract email
+      mail(to: "discussion+#{to_id}@airesis.it", bcc: @user.email, subject: subject, template_name: template_name) # TODO: extract email
     else
-      mail(to: @alert.user.email, from: ENV['NOREPLY_EMAIL'], subject: subject, template_name: template_name)
+      mail(to: @user.email, from: ENV['NOREPLY_EMAIL'], subject: subject, template_name: template_name)
     end
   end
 
   def admin_message(msg)
     @msg = msg
-    mail(to: ENV['ADMIN_EMAIL'], subject: ENV['APP_SHORT_NAME'] + " - Messaggio di amministrazione")
+    mail(to: ENV['ADMIN_EMAIL'], subject: "#{APP_SHORT_NAME} - Messaggio di amministrazione")
   end
 
   def report_message(report_id)
     @report = ProposalCommentReport.find(report_id)
 
-    mail(to: ENV['ADMIN_EMAIL'], subject: ENV['APP_SHORT_NAME'] + " - Segnalazione Contributo")
+    mail(to: ENV['ADMIN_EMAIL'], subject: "#{APP_SHORT_NAME} - Segnalazione Contributo")
   end
 
+  # send an invite to subscribe in the group
+  def invite(group_invitation_email_id)
+    @group_invitation_email = GroupInvitationEmail.find(group_invitation_email_id)
+    @group_invitation = @group_invitation_email.group_invitation
+    @group = @group_invitation.group
+    @user = @group_invitation.inviter # sender
+    @unregistered = true
 
-  def info_message(msg)
-    mail(to: ENV['ADMIN_EMAIL'], subject: ENV['APP_SHORT_NAME'] + " - Messaggio di informazione")
-  end
-
-  #invia un invito ad iscriversi al gruppo
-  def invite(group_invitation_id)
-    @group_invitation = GroupInvitation.find(group_invitation_id)
-    I18n.locale = @group_invitation.inviter.locale.key
-    @group_invitation_email = @group_invitation.group_invitation_email
-    @group = @group_invitation_email.group
+    I18n.locale = @user.locale.key
     mail(to: @group_invitation_email.email, subject: t('mailer.invite.subject', group_name: @group.name))
   end
 
   def user_message(subject, body, from_id, to_id)
     @body = body
     @from = User.find(from_id)
-    @to = User.find(to_id)
-    mail(to: @to.email, from: ENV['NOREPLY_EMAIL'], reply_to: @from.email, subject: subject)
+    @user = User.find(to_id)
+    I18n.locale = @user.locale.key || :'en-EU'
+    mail(to: @user.email, from: ENV['NOREPLY_EMAIL'], reply_to: @from.email, subject: subject)
   end
 
   def massive_email(from_id, to_ids, group_id, subject, body)
@@ -76,21 +90,16 @@ class ResqueMailer < ActionMailer::Base
     @group = Group.find(group_id)
     @user = @from
     @to = @group.participants.where('users.id in (?)', to_ids.split(','))
-    mail(bcc: @to.map { |u| u.email }, from: ENV['NOREPLY_EMAIL'], reply_to: @from.email, to: "test@airesis.it", subject: subject)   #todo extract email
+    mail(bcc: @to.map(&:email), from: ENV['NOREPLY_EMAIL'], reply_to: @from.email, to: 'test@airesis.it', subject: subject) # TODO: extract email
   end
 
+  def publish(newsletter_id, user_id)
+    @user = User.find(user_id)
+    @newsletter = Newsletter.find(newsletter_id)
+    I18n.locale = @user.locale.key || 'en-EU'
 
-  def publish(params)
-    @user = User.find_by_id(params['user_id'])
-    I18n.locale = @user.locale.key || 'en'
-    mail_fields = {
-        subject: params['subject'],
-        to: @user.email
-    }
-    @name = @user.fullname
-
-    mail(mail_fields) do |format|
-      format.html { render("maktoub/newsletters/#{params['newsletter']}") }
+    mail(subject: @newsletter.subject, to: @user.email) do |format|
+      format.html { render inline: @newsletter.body, layout: 'newsletters/default' }
     end
   end
 
@@ -110,23 +119,23 @@ class ResqueMailer < ActionMailer::Base
     @post = Frm::Post.find(post_id)
     @group = @post.forum.group
     @user = User.find(subscriber_id)
-    mail(from: "Airesis Forum <replytest+#{@post.token}@airesis.it>", to: @user.email, subject: "[#{@group.name}] #{@post.topic.subject}")   #todo extract email
+    I18n.locale = @user.locale.key || :'en-EU'
+    from_address = if ENV['MAILMAN_EMAIL'].present?
+                     composed_email = ENV['MAILMAN_EMAIL'].gsub(/%.*%/, @post.token)
+                     "#{ENV['MAILMAN_SENDER']} <#{composed_email}>"
+                   else
+                     ENV['DEFAULT_FROM']
+    end
+    mail(from: from_address, to: @user.email, subject: "[#{@group.name}] #{@post.topic.subject}")
   end
 
-
   def test_mail
-    mail(to: ENV['ADMIN_EMAIL'], subject: "Test Redis To Go")
+    mail(to: ENV['ADMIN_EMAIL'], subject: 'Test Redis To Go')
   end
 
   def few_users_a(group_id)
-    @group =Group.find(group_id)
+    @group = Group.find(group_id)
     @user = @group.portavoce.first
     mail(to: @user.email, subject: "#{@group.name} non ha ancora dei partecipanti") if @user.email
-  end
-
-  protected
-
-  def choose_layout
-    (['invite', 'admin_message', 'feedback', 'test'].include? action_name) ? 'maktoub/unregistered_mailer' : (['notification'].include? action_name) ? 'maktoub/notification_mailer' : 'maktoub/newsletter_mailer'
   end
 end

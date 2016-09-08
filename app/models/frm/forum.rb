@@ -1,4 +1,3 @@
-#encoding: utf-8
 module Frm
   class Forum < Frm::FrmTable
     include Frm::Concerns::Viewable, ::Concerns::Taggable
@@ -12,13 +11,15 @@ module Frm
 
     has_many :topics, class_name: 'Frm::Topic', dependent: :destroy
     has_many :posts, class_name: 'Frm::Post', through: :topics, dependent: :destroy
-    has_many :moderators, through: :moderator_groups, source: :frm_group, class_name: 'Frm::Group'
+    has_many :mods, through: :moderator_groups, source: :frm_mod, class_name: 'Frm::Mod'
     has_many :moderator_groups
 
     has_many :forum_tags, dependent: :destroy, foreign_key: 'frm_forum_id'
     has_many :tags, through: :forum_tags, class_name: 'Tag'
 
-    validates :category, :name, :description, presence: true
+    validates :category_id, presence: true
+    validates :name, presence: true
+    validates :description, presence: true
 
     validate :visibility
 
@@ -37,18 +38,21 @@ module Frm
     end
 
     def moderator?(user)
-      user && (user.frm_group_ids & moderator_ids).any?
+      user && (user.frm_mod_ids & mod_ids).any?
     end
 
     def to_s
       name
     end
 
+    def should_generate_new_friendly_id?
+      name_changed?
+    end
 
     protected
 
     def visibility
-      self.errors.add(:visible_outside, "Un forum non può essere visibile all''esterno se la sezione in cui è contenuto non è visibile") if (self.visible_outside && !self.category.visible_outside)
+      errors.add(:visible_outside, I18n.t('activerecord.errors.messages.forum_visibility')) if visible_outside && !category.visible_outside
     end
   end
 end
